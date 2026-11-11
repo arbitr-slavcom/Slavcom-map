@@ -13,6 +13,24 @@ function wholeClosureDiagram(c){
 const versions=(db.schemes||[]).filter(x=>x.closure_id===c.id).sort((a,b)=>b.version_number-a.version_number),v=versions[0]?.scheme||{};
 const hist=Array.isArray(v.olt_to_forest)?v.olt_to_forest:[],other=Array.isArray(v.other_connections)?v.other_connections:[];
 const central=c.code==='GARAZHI-CENTRAL', rows=[];
+if(c.code==='SUZ-STO'){
+const links=[
+['Ашотыч · синий','Броня 8 · синий','синий','синий'],
+['Ларёк · зелёный','Абонентский 8F · голубой','зелёный','голубой'],
+['Ларёк · коричневый','Абонентский 8F · красный','коричневый','красный']
+];
+const plcs=[
+{input:'Ашотыч · коричневый',color:'коричневый',outputs:[['Броня 8 · красный','красный'],['Ларёк · оранжевый','оранжевый']]},
+{input:'Ашотыч · оранжевый',color:'оранжевый',outputs:[['Ашотыч · зелёный','зелёный'],['Абонентский 8F · синий','синий']]}
+];
+const height=110+links.length*65+plcs.length*200;
+let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 '+height+'" role="img" aria-label="Полная цветная схема муфты возле СТО" style="width:100%;height:auto;min-width:700px;font-family:system-ui,sans-serif"><rect x="3" y="3" width="834" height="'+(height-6)+'" rx="14" fill="#f8fafc" stroke="#94a3b8"/><text x="420" y="32" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Муфта на Суздальской возле СТО</text><text x="20" y="63" font-size="14" fill="#334155">Источник</text><text x="580" y="63" font-size="14" fill="#334155">Назначение</text>';
+links.forEach((p,i)=>{const y=95+i*65;const left=p[2]==='голубой'?'#06b6d4':fiberColor(p[2]),right=p[3]==='голубой'?'#06b6d4':fiberColor(p[3]);svg+='<rect x="15" y="'+(y-20)+'" width="245" height="40" rx="7" fill="white" stroke="#cbd5e1"/><text x="25" y="'+(y+6)+'" font-size="13">'+e(p[0])+'</text><line x1="260" y1="'+y+'" x2="410" y2="'+y+'" stroke="'+left+'" stroke-width="6"/><circle cx="420" cy="'+y+'" r="9" fill="white" stroke="#ea580c" stroke-width="3"/><line x1="430" y1="'+y+'" x2="565" y2="'+y+'" stroke="'+right+'" stroke-width="6"/><rect x="565" y="'+(y-20)+'" width="260" height="40" rx="7" fill="white" stroke="#cbd5e1"/><text x="575" y="'+(y+6)+'" font-size="13">'+e(p[1])+'</text>'});
+plcs.forEach((p,i)=>{const y=320+i*200;svg+='<rect x="15" y="'+(y-20)+'" width="245" height="40" rx="7" fill="white" stroke="#cbd5e1"/><text x="25" y="'+(y+6)+'" font-size="13">'+e(p.input)+'</text><line x1="260" y1="'+y+'" x2="360" y2="'+y+'" stroke="'+fiberColor(p.color)+'" stroke-width="6"/><rect x="360" y="'+(y-34)+'" width="130" height="68" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/><text x="425" y="'+(y+7)+'" text-anchor="middle" font-size="19" fill="#1e3a8a">PLC 1×2</text>';
+p.outputs.forEach((out,j)=>{const yy=y-42+j*84;svg+='<path d="M490 '+y+' H525 V'+yy+' H565" fill="none" stroke="'+fiberColor(out[1])+'" stroke-width="6"/><rect x="565" y="'+(yy-20)+'" width="260" height="40" rx="7" fill="white" stroke="#cbd5e1"/><text x="575" y="'+(yy+6)+'" font-size="13">'+e(out[0])+'</text>'})});
+svg+='</svg>';return '<h4>Общая схема муфты</h4><div style="overflow-x:auto;max-width:100%;border:1px solid #cbd5e1;border-radius:10px">'+svg+'</div><p><small>Три подтверждённые прямые сварки и два PLC 1×2. Голубое и синее волокна абонентского кабеля различаются. Номера физических портов неизвестны. Отдельный PLC 1×16 установлен в соседней абонентской муфте, не здесь.</small></p>'
+}
+
 hist.forEach(x=>rows.push({type:'splice',left:'OLT · '+x.olt,right:'ЛЕС · '+x.forest,a:fiberColor(x.olt),b:fiberColor(x.forest)}));
 other.forEach(x=>{const isGreen=central&&String(x.olt).toLowerCase().includes('зел');if(!isGreen)rows.push({type:'other',left:'OLT · '+x.olt,right:x.destination,a:fiberColor(x.olt),b:'#94a3b8'})});
 if(central)rows.push({type:'plc',left:'OLT · зелёный',a:fiberColor('зелёный')});
