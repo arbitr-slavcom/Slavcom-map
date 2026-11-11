@@ -16,6 +16,7 @@ const central=c.code==='GARAZHI-CENTRAL', rows=[];
 hist.forEach(x=>rows.push({type:'splice',left:'OLT · '+x.olt,right:'ЛЕС · '+x.forest,a:fiberColor(x.olt),b:fiberColor(x.forest)}));
 other.forEach(x=>{const isGreen=central&&String(x.olt).toLowerCase().includes('зел');if(!isGreen)rows.push({type:'other',left:'OLT · '+x.olt,right:x.destination,a:fiberColor(x.olt),b:'#94a3b8'})});
 if(central)rows.push({type:'plc',left:'OLT · зелёный',a:fiberColor('зелёный')});
+if(c.code==='GAR-FOREST-SOURCE'){const colors=['синий','красный','зелёный','коричневый'];colors.forEach(color=>rows.push({type:'splice',left:'Со стороны леса · '+color,right:'GAR-FOREST · '+color,a:fiberColor(color),b:fiberColor(color)}))}
 if(!rows.length){db.splices.filter(x=>x.closure_id===c.id).forEach(x=>{const a=db.cables.find(z=>z.id===x.input_cable_id),b=db.cables.find(z=>z.id===x.output_cable_id);rows.push({type:'splice',left:(a?.code||'Кабель?')+' №'+x.input_fiber,right:(b?.code||'Кабель?')+' №'+x.output_fiber,a:'#94a3b8',b:'#94a3b8'})})}
 if(!rows.length)return '<p>Для этой муфты нет подтверждённых соединений для рисунка.</p>';
 const h=100+rows.reduce((sum,x)=>sum+(x.type==='plc'?250:62),0);
