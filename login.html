@@ -1,4 +1,18 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Славком — вход по паролю (новая версия)</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body{margin:0;height:100%;font:14px system-ui,sans-serif}header{height:54px;display:flex;align-items:center;gap:8px;padding:0 10px;background:#14283c;color:white;box-sizing:border-box}header b{margin-right:auto}button,input{border:1px solid #bac4d0;border-radius:6px;padding:8px;font:inherit}button{cursor:pointer}#map{height:calc(100dvh - 54px)}#login,#detail{position:absolute;z-index:1100;background:#fff;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box}#login{top:64px;left:10px;max-width:340px}#login input{display:block;margin:8px 0;width:95%}#detail{top:64px;right:10px;bottom:12px;width:min(390px,94vw);overflow:auto;display:none}#detail.wide{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;border-radius:0;z-index:2000;padding:16px 24px;overflow:auto}#detail.wide #content{max-width:1600px;margin:0 auto}#detail.wide svg[style*="min-width"]{min-width:0!important;width:100%!important}#detailControls{position:sticky;top:-16px;z-index:3;background:#fff;display:flex;justify-content:flex-end;gap:8px;padding:8px 0;margin:-8px 0 8px}#detail.wide #detailControls{top:-16px;padding:12px 0;border-bottom:1px solid #e2e8f0}@media(max-width:600px){#detail.wide{padding:12px}#detail.wide #detailControls{top:-12px}}#status{font-size:11px}small{color:#64748b}p{overflow-wrap:anywhere}#message{font-size:12px;color:#475569}.row{border-bottom:1px solid #e2e8f0;padding:8px 0}</style></head><body><header><b>Славком · карта</b><span id="status">Вход</span><button onclick="load()">↻</button><button onclick="logout()">Выход</button></header><div id="map"></div><button id="addClosureBtn" onclick="beginAddClosure()" style="display:none;position:fixed;left:12px;bottom:24px;z-index:1050;background:#0f766e;color:white;border:2px solid white;border-radius:24px;padding:13px 18px;font-weight:700;box-shadow:0 3px 14px #0005">+ Добавить муфту</button><button id="addCableBtn" onclick="beginAddCable()" style="display:none;position:fixed;left:12px;bottom:83px;z-index:1050;background:#1d4ed8;color:white;border:2px solid white;border-radius:24px;padding:13px 18px;font-weight:700;box-shadow:0 3px 14px #0005">+ Кабель</button><section id="login"><b>Доступ к карте сети</b><p>Вход по почте и паролю. Письмо с кодом или ссылкой — резервный вариант. Просмотр доступен только разрешённым пользователям.</p><input type="email" id="email" placeholder="Электронная почта"><input type="password" id="password" autocomplete="current-password" placeholder="Пароль"><button onclick="passwordLogin()">Войти по паролю</button><p><small>Если пароль ещё не задан, его нужно установить в Supabase. Вход по письму оставлен как резервный вариант.</small></p><button onclick="sendCode()">Получить письмо для входа</button><input id="code" placeholder="Код из письма"><button onclick="verifyCode()">Войти</button><p id="message"></p></section><section id="createClosure" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(390px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:white;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box"><h3>Новая муфта</h3><p><small>Точка на карте выбрана. Проверь координаты и заполни название.</small></p><label>Название <input id="newClosureName" maxlength="120" placeholder="Например: Муфта возле дома №5" style="display:block;width:100%;box-sizing:border-box"></label><label>Адрес <input id="newClosureAddress" maxlength="250" placeholder="Улица, ориентир (необязательно)" style="display:block;width:100%;box-sizing:border-box"></label><label>Примечание <textarea id="newClosureNotes" maxlength="2000" rows="3" style="display:block;width:100%;box-sizing:border-box" placeholder="Что известно о муфте (необязательно)"></textarea></label><p id="newClosureCoords"></p><p id="newClosureError" style="color:#b91c1c"></p><button id="newClosureSave" onclick="saveNewClosure()" style="background:#0f766e;color:white">Подтвердить и сохранить</button> <button onclick="cancelAddClosure()">Отмена</button></section><section id="createCable" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(400px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:#fff;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box">
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Славком — вход по паролю (новая версия)</title><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body{margin:0;height:100%;font:14px system-ui,sans-serif}header{height:54px;display:flex;align-items:center;gap:8px;padding:0 10px;background:#14283c;color:white;box-sizing:border-box}header b{margin-right:auto}button,input{border:1px solid #bac4d0;border-radius:6px;padding:8px;font:inherit}button{cursor:pointer}#map{height:calc(100dvh - 54px)}#login,#detail{position:absolute;z-index:1100;background:#fff;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box}#login{top:64px;left:10px;max-width:340px}#login input{display:block;margin:8px 0;width:95%}#detail{top:64px;right:10px;bottom:12px;width:min(390px,94vw);overflow:auto;display:none}#detail.wide{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;border-radius:0;z-index:2000;padding:16px 24px;overflow:auto}#detail.wide #content{max-width:1600px;margin:0 auto}#detail.wide svg[style*="min-width"]{min-width:0!important;width:100%!important}#detailControls{position:sticky;top:-16px;z-index:3;background:#fff;display:flex;justify-content:flex-end;gap:8px;padding:8px 0;margin:-8px 0 8px}#detail.wide #detailControls{top:-16px;padding:12px 0;border-bottom:1px solid #e2e8f0}@media(max-width:600px){#detail.wide{padding:12px}#detail.wide #detailControls{top:-12px}}#status{font-size:11px}small{color:#64748b}p{overflow-wrap:anywhere}#message{font-size:12px;color:#475569}.row{border-bottom:1px solid #e2e8f0;padding:8px 0}</style></head><body><header><b>Славком · карта</b><span id="status">Вход</span><button onclick="load()">↻</button><button onclick="logout()">Выход</button></header><div id="map"></div><button id="addClosureBtn" onclick="beginAddClosure()" style="display:none;position:fixed;left:12px;bottom:24px;z-index:1050;background:#0f766e;color:white;border:2px solid white;border-radius:24px;padding:13px 18px;font-weight:700;box-shadow:0 3px 14px #0005">+ Добавить муфту</button><button id="addCableBtn" onclick="beginAddCable()" style="display:none;position:fixed;left:12px;bottom:83px;z-index:1050;background:#1d4ed8;color:white;border:2px solid white;border-radius:24px;padding:13px 18px;font-weight:700;box-shadow:0 3px 14px #0005">+ Кабель</button><button id="addPoleBtn" onclick="beginPoleMode()" style="display:none;position:fixed;left:12px;bottom:145px;z-index:1050;background:#7c3aed;color:white;border:2px solid white;border-radius:24px;padding:12px 16px;font-weight:700;box-shadow:0 3px 14px #0005">+ Опора</button><button id="editRouteBtn" onclick="beginRouteSelect()" style="display:none;position:fixed;left:12px;bottom:203px;z-index:1050;background:#0369a1;color:white;border:2px solid white;border-radius:24px;padding:12px 16px;font-weight:700;box-shadow:0 3px 14px #0005">✎ Трасса кабеля</button>
+<section id="createPole" style="display:none;position:fixed;z-index:1450;top:64px;right:10px;width:min(380px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:white;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box">
+<h3>Новая опора</h3><p><small>Место выбрано на карте. Опора сохраняется отдельно от муфт.</small></p>
+<label>Название <input id="poleName" maxlength="120" placeholder="Опора №1" style="width:100%;box-sizing:border-box;display:block"></label>
+<label>Примечание <textarea id="poleNotes" maxlength="2000" rows="2" style="width:100%;box-sizing:border-box;display:block" placeholder="Улица, номер, ориентир"></textarea></label>
+<p id="poleCoords"></p><p id="poleError" style="color:#b91c1c"></p>
+<button id="poleSave" onclick="savePole()" style="background:#7c3aed;color:white">Сохранить опору</button> <button onclick="cancelPoleMode()">Отмена</button>
+</section>
+<section id="routeEditor" style="display:none;position:fixed;z-index:1400;top:64px;right:10px;width:min(420px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:white;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box">
+<h3>✎ Трасса кабеля</h3>
+<p id="routeName"></p><p><small>Кликай по карте, чтобы ставить поворотные точки по ходу кабеля от первой муфты ко второй. Можно нажимать на опоры для точной привязки. Начало и конец кабеля привязываются к муфтам автоматически.</small></p>
+<p id="routeCount"></p><p id="routeError" style="color:#b91c1c"></p>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="undoRoutePoint()">↶ Убрать точку</button><button onclick="clearRoutePoints()">Прямая линия</button><button id="routeSave" onclick="saveCableRoute()" style="background:#0369a1;color:white">Сохранить трассу</button><button onclick="cancelRouteEdit()">Отмена</button></div>
+</section>
+<section id="login"><b>Доступ к карте сети</b><p>Вход по почте и паролю. Письмо с кодом или ссылкой — резервный вариант. Просмотр доступен только разрешённым пользователям.</p><input type="email" id="email" placeholder="Электронная почта"><input type="password" id="password" autocomplete="current-password" placeholder="Пароль"><button onclick="passwordLogin()">Войти по паролю</button><p><small>Если пароль ещё не задан, его нужно установить в Supabase. Вход по письму оставлен как резервный вариант.</small></p><button onclick="sendCode()">Получить письмо для входа</button><input id="code" placeholder="Код из письма"><button onclick="verifyCode()">Войти</button><p id="message"></p></section><section id="createClosure" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(390px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:white;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box"><h3>Новая муфта</h3><p><small>Точка на карте выбрана. Проверь координаты и заполни название.</small></p><label>Название <input id="newClosureName" maxlength="120" placeholder="Например: Муфта возле дома №5" style="display:block;width:100%;box-sizing:border-box"></label><label>Адрес <input id="newClosureAddress" maxlength="250" placeholder="Улица, ориентир (необязательно)" style="display:block;width:100%;box-sizing:border-box"></label><label>Примечание <textarea id="newClosureNotes" maxlength="2000" rows="3" style="display:block;width:100%;box-sizing:border-box" placeholder="Что известно о муфте (необязательно)"></textarea></label><p id="newClosureCoords"></p><p id="newClosureError" style="color:#b91c1c"></p><button id="newClosureSave" onclick="saveNewClosure()" style="background:#0f766e;color:white">Подтвердить и сохранить</button> <button onclick="cancelAddClosure()">Отмена</button></section><section id="createCable" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(400px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:#fff;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box">
 <h3>Новая кабельная линия</h3><p><small>Укажи две муфты из списка или выбери их последовательно на карте. После сохранения появится прямая линия между муфтами; фактическая трасса пока не задана.</small></p>
 <label>От муфты<select id="cableFrom" onchange="updateCablePreview()" style="display:block;width:100%;padding:8px;margin:4px 0 10px"></select></label>
 <label>До муфты<select id="cableTo" onchange="updateCablePreview()" style="display:block;width:100%;padding:8px;margin:4px 0 10px"></select></label>
@@ -27,14 +41,127 @@ const msg=x=>document.getElementById('message').textContent=x;
 async function passwordLogin(){const email=document.getElementById('email').value.trim(),password=document.getElementById('password').value; if(!email||!password){msg('Введите почту и пароль');return}const {error}=await sb.auth.signInWithPassword({email,password});if(error){msg(error.message);return}msg('Вход выполнен');load()}
 async function sendCode(){const {error}=await sb.auth.signInWithOtp({email:document.getElementById('email').value.trim(),options:{emailRedirectTo:'https://arbitr-slavcom.github.io/Slavcom-map/'}});msg(error?.message||'Письмо отправлено. Откройте ссылку «Войти» в письме. Если ссылка не открывает карту, нужно разрешить адрес карты в настройках Supabase Auth.')}
 async function verifyCode(){const {error}=await sb.auth.verifyOtp({email:document.getElementById('email').value.trim(),token:document.getElementById('code').value.trim(),type:'email'});msg(error?.message||'Вход выполнен');if(!error)load()}
-async function logout(){if(addingCable)cancelAddCable();cancelSplitter();await sb.auth.signOut();layer.clearLayers();db=null;document.getElementById('login').style.display='block';document.getElementById('addClosureBtn').style.display='none';document.getElementById('addCableBtn').style.display='none';cancelAddClosure();document.getElementById('status').textContent='Вход'}
+async function logout(){stopMapModes();cancelSplitter();await sb.auth.signOut();layer.clearLayers();db=null;document.getElementById('login').style.display='block';document.getElementById('addClosureBtn').style.display='none';document.getElementById('addCableBtn').style.display='none';document.getElementById('addPoleBtn').style.display='none';document.getElementById('editRouteBtn').style.display='none';cancelAddClosure();document.getElementById('status').textContent='Вход'}
 let selectedClosure=null,addingClosure=false,newClosurePoint=null,newClosureMarker=null;
 let addingCable=false,cablePreviewLine=null,splitterTarget=null;
 
+
+let addingPole=false,polePoint=null,poleMarker=null,routeSelecting=false,routeEditing=null,routePoints=[],routePreview=null,routeVertices=null;
+function stopMapModes(){
+ if(addingCable)cancelAddCable();
+ if(addingClosure)cancelAddClosure();
+ if(addingPole)cancelPoleMode();
+ if(routeEditing||routeSelecting)cancelRouteEdit();
+}
+function beginPoleMode(){
+ if(!db)return;stopMapModes();addingPole=true;
+ document.getElementById('detail').style.display='none';
+ document.getElementById('createPole').style.display='none';
+ document.getElementById('addPoleBtn').textContent='Отмена опоры';
+ document.getElementById('addPoleBtn').onclick=cancelPoleMode;
+ document.getElementById('status').textContent='Режим опор: выбери место на карте';
+}
+function placePoleAt(latlng){
+ polePoint=latlng;
+ if(poleMarker)map.removeLayer(poleMarker);
+ poleMarker=L.circleMarker(latlng,{radius:8,color:'#7c3aed',fillOpacity:.5}).addTo(map);
+ document.getElementById('poleCoords').textContent='Координаты: '+latlng.lat.toFixed(6)+', '+latlng.lng.toFixed(6);
+ document.getElementById('poleName').value='Опора '+(Number((db.poles||[]).length)+1);
+ document.getElementById('poleNotes').value='';
+ document.getElementById('poleError').textContent='';
+ document.getElementById('createPole').style.display='block';
+}
+function cancelPoleMode(){
+ addingPole=false;polePoint=null;
+ if(poleMarker){map.removeLayer(poleMarker);poleMarker=null}
+ document.getElementById('createPole').style.display='none';
+ document.getElementById('addPoleBtn').textContent='+ Опора';
+ document.getElementById('addPoleBtn').onclick=beginPoleMode;
+ document.getElementById('status').textContent='Карта сети';
+}
+async function savePole(){
+ if(!polePoint)return;
+ const name=document.getElementById('poleName').value.trim(),notes=document.getElementById('poleNotes').value.trim(),error=document.getElementById('poleError'),button=document.getElementById('poleSave');
+ if(!name){error.textContent='Укажи название опоры';return}
+ button.disabled=true;error.textContent='';
+ try{
+  await mapWrite({action:'create_pole',name,notes,latitude:polePoint.lat,longitude:polePoint.lng});
+  cancelPoleMode();await load();
+ }catch(ex){error.textContent=ex.message}finally{button.disabled=false}
+}
+function beginRouteSelect(){
+ if(!db)return;stopMapModes();routeSelecting=true;
+ document.getElementById('detail').style.display='none';
+ document.getElementById('editRouteBtn').textContent='Отмена выбора';
+ document.getElementById('editRouteBtn').onclick=cancelRouteEdit;
+ document.getElementById('status').textContent='Нажми на существующую кабельную линию';
+ document.getElementById('routeEditor').style.display='block';
+ document.getElementById('routeName').textContent='Нажми на линию кабеля на карте, чтобы изменить её трассу. Или открой муфту → Кабели → Проложить трассу.';
+ document.getElementById('routeCount').textContent='';
+ document.getElementById('routeError').textContent='';
+ document.getElementById('routeSave').style.display='none';
+}
+function editCableRoute(id){
+ if(!db)return;
+ const cable=db.cables.find(x=>x.id===id),a=db.closures.find(x=>x.id===cable?.from_closure_id),b=db.closures.find(x=>x.id===cable?.to_closure_id);
+ if(!cable||a?.latitude==null||b?.latitude==null){alert('Для кабеля должны быть указаны обе муфты с координатами');return}
+ stopMapModes();
+ routeEditing=id;
+ routePoints=Array.isArray(cable.route_points)?cable.route_points.map(p=>[p[0],p[1]]):[];
+ document.getElementById('routeEditor').style.display='block';
+ document.getElementById('routeName').textContent=cable.code+' · '+a.name+' → '+b.name;
+ document.getElementById('routeError').textContent='';
+ document.getElementById('routeSave').style.display='';
+ document.getElementById('detail').style.display='none';
+ document.getElementById('editRouteBtn').textContent='Отмена трассы';
+ document.getElementById('editRouteBtn').onclick=cancelRouteEdit;
+ document.getElementById('status').textContent='Редактирование трассы '+cable.code;
+ map.fitBounds(L.latLngBounds([[a.latitude,a.longitude],[b.latitude,b.longitude]]).pad(.22),{maxZoom:18});
+ updateRoutePreview();
+}
+function cancelRouteEdit(){
+ routeSelecting=false;routeEditing=null;routePoints=[];
+ if(routePreview){map.removeLayer(routePreview);routePreview=null}
+ if(routeVertices){map.removeLayer(routeVertices);routeVertices=null}
+ document.getElementById('routeEditor').style.display='none';
+ document.getElementById('editRouteBtn').textContent='✎ Трасса кабеля';
+ document.getElementById('editRouteBtn').onclick=beginRouteSelect;
+ document.getElementById('status').textContent='Карта сети';
+}
+function addRoutePoint(latlng){
+ if(!routeEditing)return;
+ if(routePoints.length>=500){document.getElementById('routeError').textContent='Максимум 500 поворотных точек';return}
+ routePoints.push([Number(latlng.lat.toFixed(7)),Number(latlng.lng.toFixed(7))]);
+ updateRoutePreview();
+}
+function undoRoutePoint(){if(!routeEditing)return;routePoints.pop();updateRoutePreview()}
+function clearRoutePoints(){if(!routeEditing)return;if(routePoints.length&&!confirm('Убрать все повороты и сделать кабель прямым между муфтами?'))return;routePoints=[];updateRoutePreview()}
+function updateRoutePreview(){
+ if(routePreview)map.removeLayer(routePreview);
+ if(routeVertices)map.removeLayer(routeVertices);
+ if(!routeEditing)return;
+ const c=db.cables.find(x=>x.id===routeEditing),a=db.closures.find(x=>x.id===c.from_closure_id),b=db.closures.find(x=>x.id===c.to_closure_id);
+ const pts=[[a.latitude,a.longitude],...routePoints,[b.latitude,b.longitude]];
+ routePreview=L.polyline(pts,{color:'#f97316',weight:6,opacity:.95,dashArray:'10,6',interactive:false}).addTo(map);
+ routeVertices=L.layerGroup().addTo(map);
+ routePoints.forEach((p,i)=>L.circleMarker(p,{radius:6,color:'#ea580c',fillColor:'#fff',fillOpacity:1,weight:2,interactive:false}).addTo(routeVertices));
+ document.getElementById('routeCount').textContent='Поворотных точек: '+routePoints.length+'. Нажми «Сохранить трассу», когда путь готов.';
+ document.getElementById('routeError').textContent='';
+}
+async function saveCableRoute(){
+ if(!routeEditing)return;
+ const btn=document.getElementById('routeSave'),err=document.getElementById('routeError'),id=routeEditing;
+ btn.disabled=true;err.textContent='';
+ try{
+  await mapWrite({action:'save_cable_route',cable_id:id,route_points:routePoints});
+  cancelRouteEdit();await load();
+  document.getElementById('status').textContent='Трасса сохранена';
+ }catch(ex){err.textContent=ex.message}finally{btn.disabled=false}
+}
 function cableOptions(){return '<option value="">— Выбери муфту —</option>'+db.closures.filter(c=>c.latitude!=null&&c.longitude!=null).sort((a,b)=>String(a.name).localeCompare(String(b.name),'ru')).map(c=>'<option value="'+e(c.id)+'">'+e(c.name||c.code)+'</option>').join('')}
 function beginAddCable(){
  if(!db)return;
- if(addingClosure)cancelAddClosure();
+ stopMapModes();
  addingCable=true;
  document.getElementById('detail').style.display='none';
  document.getElementById('createSplitter').style.display='none';
@@ -121,7 +248,7 @@ async function saveNewSplitter(){
 
 function beginAddClosure(){if(!db)return;if(addingCable)cancelAddCable();addingClosure=true;newClosurePoint=null;if(newClosureMarker){map.removeLayer(newClosureMarker);newClosureMarker=null}document.getElementById('createClosure').style.display='none';document.getElementById('detail').style.display='none';document.getElementById('status').textContent='Нажми на место новой муфты';document.getElementById('addClosureBtn').textContent='Отмена';document.getElementById('addClosureBtn').onclick=cancelAddClosure}
 function cancelAddClosure(){addingClosure=false;newClosurePoint=null;if(newClosureMarker){map.removeLayer(newClosureMarker);newClosureMarker=null}document.getElementById('createClosure').style.display='none';document.getElementById('addClosureBtn').textContent='+ Добавить муфту';document.getElementById('addClosureBtn').onclick=beginAddClosure;document.getElementById('status').textContent='Карта сети'}
-map.on('click',event=>{if(!addingClosure)return;newClosurePoint=event.latlng;if(newClosureMarker)map.removeLayer(newClosureMarker);newClosureMarker=L.marker(newClosurePoint).addTo(map);document.getElementById('newClosureCoords').textContent='Координаты: '+newClosurePoint.lat.toFixed(6)+', '+newClosurePoint.lng.toFixed(6);document.getElementById('newClosureError').textContent='';document.getElementById('createClosure').style.display='block'});
+map.on('click',event=>{if(routeEditing){addRoutePoint(event.latlng);return}if(addingPole){placePoleAt(event.latlng);return}if(!addingClosure)return;newClosurePoint=event.latlng;if(newClosureMarker)map.removeLayer(newClosureMarker);newClosureMarker=L.marker(newClosurePoint).addTo(map);document.getElementById('newClosureCoords').textContent='Координаты: '+newClosurePoint.lat.toFixed(6)+', '+newClosurePoint.lng.toFixed(6);document.getElementById('newClosureError').textContent='';document.getElementById('createClosure').style.display='block'});
 async function saveNewClosure(){if(!addingClosure||!newClosurePoint)return;const name=document.getElementById('newClosureName').value.trim(),address=document.getElementById('newClosureAddress').value.trim(),notes=document.getElementById('newClosureNotes').value.trim(),err=document.getElementById('newClosureError'),btn=document.getElementById('newClosureSave');if(!name){err.textContent='Укажи название муфты';return}if(!confirm('Сохранить новую муфту «'+name+'» в общей базе сети?'))return;btn.disabled=true;err.textContent='Сохраняем…';try{const {data:{session}}=await sb.auth.getSession();if(!session)throw Error('Войди в систему заново');const response=await fetch('https://xwnqquregcurkxrbmavy.supabase.co/functions/v1/slavcom-map-data',{method:'POST',headers:{'Authorization':'Bearer '+session.access_token,'Content-Type':'application/json'},body:JSON.stringify({action:'create_closure',name,address,notes,latitude:newClosurePoint.lat,longitude:newClosurePoint.lng})});if(!response.ok)throw Error('Ошибка сохранения: '+response.status);const result=await response.json();cancelAddClosure();document.getElementById('newClosureName').value='';document.getElementById('newClosureAddress').value='';document.getElementById('newClosureNotes').value='';await load();focusClosure(result.closure.id)}catch(ex){err.textContent=ex.message}finally{btn.disabled=false}}
 
 function fiberColor(v){const t=String(v||'').toLowerCase();if(t.includes('голуб')||t.includes('cyan'))return '#06b6d4';if(t.includes('чёр')||t.includes('черн')||t.includes('black'))return '#111827';if(t.includes('сирен')||t.includes('фиолет')||t.includes('violet'))return '#9333ea';if(t.includes('жёл')||t.includes('желт')||t.includes('yellow'))return '#eab308';if(t.includes('оранж')||t.includes('orange'))return '#f97316';if(t.includes('корич')||t.includes('brown'))return '#92400e';if(t.includes('сер')||t.includes('gray')||t.includes('grey'))return '#64748b';if(t.includes('крас')||t.includes('red'))return '#dc2626';if(t.includes('син')||t.includes('blue'))return '#2563eb';if(t.includes('зел')||t.includes('green'))return '#16a34a';if(t.includes('бел')||t.includes('white'))return '#cbd5e1';return '#94a3b8'}
@@ -232,11 +359,63 @@ document.addEventListener('keydown',event=>{if(event.key==='Escape'){const detai
 function show(c,tab='scheme'){selectedClosure=c.id;const cables=db.cables.filter(x=>x.from_closure_id===c.id||x.to_closure_id===c.id);let h='<h3>'+e(c.name)+'</h3><small>'+e(c.code)+'</small><p><button onclick="beginAddSplitter(\''+e(c.id)+'\')">+ Делитель PLC</button></p><div style="display:flex;gap:5px;flex-wrap:wrap;margin:12px 0"><button onclick="switchTab(\'scheme\')">Схема</button><button onclick="switchTab(\'cables\')">Кабели</button><button onclick="switchTab(\'info\')">Информация</button><button onclick="switchTab(\'history\')">История</button></div>';
 if(tab==='scheme')h+=scheme(c);
 if(tab==='history')h+=history(c);
-if(tab==='cables'){h+='<h4>Кабели ('+cables.length+')</h4>';cables.forEach(x=>{const other=db.closures.find(z=>z.id===(x.from_closure_id===c.id?x.to_closure_id:x.from_closure_id));h+='<div class="row"><b>'+e(x.code)+'</b> · '+e(x.fiber_count)+'F'+(x.strength_member?' · '+e(x.strength_member):'')+(x.tensile_strength_kn!=null?' · '+e(x.tensile_strength_kn)+' кН':'')+'<p>'+e(x.notes||'')+'</p>'+(other?'<button data-target="'+e(other.id)+'" class="goto">К муфте: '+e(other.name)+'</button>':'<small>Другая муфта не указана</small>')+'</div>'})}
+if(tab==='cables'){h+='<h4>Кабели ('+cables.length+')</h4>';cables.forEach(x=>{const other=db.closures.find(z=>z.id===(x.from_closure_id===c.id?x.to_closure_id:x.from_closure_id));h+='<div class="row"><b>'+e(x.code)+'</b> · '+e(x.fiber_count)+'F'+(x.strength_member?' · '+e(x.strength_member):'')+(x.tensile_strength_kn!=null?' · '+e(x.tensile_strength_kn)+' кН':'')+'<p>'+e(x.notes||'')+'</p><button class="route-for-cable" data-cable="'+e(x.id)+'">✎ Проложить трассу</button> '+(Array.isArray(x.route_points)&&x.route_points.length?'<small>Поворотов: '+x.route_points.length+'</small>':'<small>Прямая между муфтами</small>')+(other?'<button data-target="'+e(other.id)+'" class="goto">К муфте: '+e(other.name)+'</button>':'<small>Другая муфта не указана</small>')+'</div>'})}
 if(tab==='info')h+='<p>'+e(c.address||'Адрес не указан')+'</p><p>Координаты: '+e(c.latitude)+', '+e(c.longitude)+'</p><p>'+e(c.notes||'Примечаний нет')+'</p><p><b>Создано:</b> '+e(c.created_at?new Date(c.created_at).toLocaleString('ru-RU'):'дата неизвестна')+'</p><p><b>Автор записи:</b> '+e(c.created_by_email||'Не зафиксирован (создано до включения учёта авторов)')+'</p><button onclick="focusClosure(selectedClosure)">Показать на карте</button>';
-const box=document.getElementById('content');box.innerHTML=h;box.querySelectorAll('.goto').forEach(b=>b.onclick=()=>focusClosure(b.dataset.target));document.getElementById('detail').style.display='block'}
+const box=document.getElementById('content');box.innerHTML=h;box.querySelectorAll('.goto').forEach(b=>b.onclick=()=>focusClosure(b.dataset.target));box.querySelectorAll('.route-for-cable').forEach(b=>b.onclick=()=>editCableRoute(b.dataset.cable));document.getElementById('detail').style.display='block'}
 function switchTab(tab){const c=db?.closures.find(x=>x.id===selectedClosure);if(c)show(c,tab)}
-function draw(){layer.clearLayers();const index=Object.fromEntries(db.closures.map(x=>[x.id,x]));db.cables.forEach(c=>{const a=index[c.from_closure_id],b=index[c.to_closure_id];if(a?.latitude&&b?.latitude&&(a.latitude!==b.latitude||a.longitude!==b.longitude))L.polyline([[a.latitude,a.longitude],[b.latitude,b.longitude]],{color:'#2563eb',weight:3,opacity:.7}).bindTooltip(e(c.code)+' · '+c.fiber_count+'F').addTo(layer)});const groups={};db.closures.forEach(c=>{if(c.latitude&&c.longitude)(groups[c.latitude+','+c.longitude]??=[]).push(c)});Object.values(groups).forEach(g=>{const c=g[0];L.circleMarker([c.latitude,c.longitude],{radius:g.length>1?10:7,color:'#0f766e',fillOpacity:.9}).addTo(layer).bindTooltip(g.map(x=>e(x.name)).join(' / ')).on('click',()=>{if(addingCable){if(g.length===1){selectCableClosure(c)}else{const box=document.getElementById('content');box.innerHTML='<h3>Выбери муфту для кабеля</h3>';g.forEach(x=>{const b=document.createElement('button');b.textContent=x.name;b.style.display='block';b.style.margin='8px 0';b.onclick=()=>{selectCableClosure(x);document.getElementById('detail').style.display='none'};box.append(b)});document.getElementById('detail').style.display='block'}return}if(g.length===1)show(c);else{const box=document.getElementById('content');box.innerHTML='<h3>Муфты в этой точке</h3>';g.forEach(x=>{const b=document.createElement('button');b.textContent=x.name;b.style.display='block';b.style.margin='8px 0';b.onclick=()=>show(x);box.append(b)});document.getElementById('detail').style.display='block'}})})}
-async function load(){const {data}=await sb.auth.getSession();if(!data.session){document.getElementById('login').style.display='block';return}try{const r=await fetch('https://xwnqquregcurkxrbmavy.supabase.co/functions/v1/slavcom-map-data',{headers:{Authorization:'Bearer '+data.session.access_token}});if(!r.ok)throw Error(r.status===403?'Учётная запись ещё не допущена к карте':'Ошибка загрузки: '+r.status);db=await r.json();draw();document.getElementById('login').style.display='none';document.getElementById('addClosureBtn').style.display='inline-block';document.getElementById('addCableBtn').style.display='inline-block';if(!addingClosure&&!addingCable)document.getElementById('status').textContent='Обновлено '+new Date().toLocaleTimeString('ru-RU')}catch(err){document.getElementById('status').textContent='Нет доступа';msg(err.message);document.getElementById('login').style.display='block'}}
+function draw(){
+ layer.clearLayers();
+ const index=Object.fromEntries(db.closures.map(x=>[x.id,x]));
+ db.cables.forEach(c=>{
+  const a=index[c.from_closure_id],b=index[c.to_closure_id];
+  if(a?.latitude==null||b?.latitude==null)return;
+  const coords=[[a.latitude,a.longitude],...(Array.isArray(c.route_points)?c.route_points.filter(p=>Array.isArray(p)&&p.length===2):[]),[b.latitude,b.longitude]];
+  if(coords.length===2&&a.latitude===b.latitude&&a.longitude===b.longitude)return;
+  const cableLine=L.polyline(coords,{color:c.status==='planned'?'#64748b':'#2563eb',weight:5,opacity:.83,dashArray:c.status==='planned'?'7,7':null}).addTo(layer);
+  cableLine.bindTooltip(e(c.code)+' · '+c.fiber_count+'F'+(c.tensile_strength_kn?' · '+c.tensile_strength_kn+' кН':''));
+  cableLine.on('click',event=>{
+   L.DomEvent.stopPropagation(event);
+   if(routeEditing)return;
+   if(routeSelecting){editCableRoute(c.id);return}
+   const container=document.createElement('div');container.textContent=c.code+' · '+c.fiber_count+'F';
+   const b=document.createElement('button');b.textContent='✎ Изменить трассу';b.style.display='block';b.style.marginTop='8px';b.onclick=()=>{map.closePopup();editCableRoute(c.id)};
+   container.append(b);L.popup().setLatLng(event.latlng).setContent(container).openOn(map);
+  });
+ });
+ (db.poles||[]).forEach(p=>{
+  if(p.latitude==null||p.longitude==null)return;
+  const marker=L.circleMarker([p.latitude,p.longitude],{radius:5,color:'#6d28d9',weight:2,fillColor:'#ddd6fe',fillOpacity:1}).addTo(layer);
+  marker.bindTooltip('Опора · '+e(p.name));
+  marker.on('click',event=>{
+   L.DomEvent.stopPropagation(event);
+   if(routeEditing){addRoutePoint(event.latlng);return}
+   if(routeSelecting)return;
+   marker.bindPopup('<b>Опора: '+e(p.name)+'</b><p>'+e(p.notes||'')+'</p><small>'+Number(p.latitude).toFixed(6)+', '+Number(p.longitude).toFixed(6)+'</small>').openPopup();
+  });
+ });
+ const groups={};db.closures.forEach(c=>{if(c.latitude!=null&&c.longitude!=null)(groups[c.latitude+','+c.longitude]??=[]).push(c)});
+ Object.values(groups).forEach(g=>{
+  const c=g[0];
+  L.circleMarker([c.latitude,c.longitude],{radius:g.length>1?10:7,color:'#0f766e',fillOpacity:.9}).addTo(layer).bindTooltip(g.map(x=>e(x.name)).join(' / ')).on('click',event=>{
+   L.DomEvent.stopPropagation(event);
+   if(routeEditing)return;
+   if(routeSelecting)return;
+   if(addingCable){
+    if(g.length===1){selectCableClosure(c)}else{
+     const box=document.getElementById('content');box.innerHTML='<h3>Выбери муфту для кабеля</h3>';
+     g.forEach(x=>{const b=document.createElement('button');b.textContent=x.name;b.style.display='block';b.style.margin='8px 0';b.onclick=()=>{selectCableClosure(x);document.getElementById('detail').style.display='none'};box.append(b)});
+     document.getElementById('detail').style.display='block'
+    }
+    return
+   }
+   if(g.length===1)show(c);else{
+    const box=document.getElementById('content');box.innerHTML='<h3>Муфты в этой точке</h3>';
+    g.forEach(x=>{const b=document.createElement('button');b.textContent=x.name;b.style.display='block';b.style.margin='8px 0';b.onclick=()=>show(x);box.append(b)});
+    document.getElementById('detail').style.display='block'
+   }
+  })
+ });
+}
+async function load(){const {data}=await sb.auth.getSession();if(!data.session){document.getElementById('login').style.display='block';return}try{const r=await fetch('https://xwnqquregcurkxrbmavy.supabase.co/functions/v1/slavcom-map-data',{headers:{Authorization:'Bearer '+data.session.access_token}});if(!r.ok)throw Error(r.status===403?'Учётная запись ещё не допущена к карте':'Ошибка загрузки: '+r.status);db=await r.json();draw();document.getElementById('login').style.display='none';document.getElementById('addClosureBtn').style.display='inline-block';document.getElementById('addCableBtn').style.display='inline-block';document.getElementById('addPoleBtn').style.display='inline-block';document.getElementById('editRouteBtn').style.display='inline-block';if(!addingClosure&&!addingCable&&!addingPole&&!routeEditing&&!routeSelecting)document.getElementById('status').textContent='Обновлено '+new Date().toLocaleTimeString('ru-RU')}catch(err){document.getElementById('status').textContent='Нет доступа';msg(err.message);document.getElementById('login').style.display='block'}}
 load();setInterval(load,30000);
 </script></body></html>
