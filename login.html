@@ -33,7 +33,7 @@
 <label>Входное волокно / кабель <input id="splitterInput" maxlength="400" placeholder="Если известно, опиши вход" style="display:block;width:100%;box-sizing:border-box"></label>
 <label>Примечание / назначения выходов<textarea id="splitterNotes" rows="3" maxlength="2000" style="display:block;width:100%;box-sizing:border-box" placeholder="Номера портов и кабели, если известны"></textarea></label>
 <p id="splitterError" style="color:#b91c1c"></p><button id="splitterSave" onclick="saveNewSplitter()" style="background:#0f766e;color:white">Подтвердить и сохранить</button> <button onclick="cancelSplitter()">Отмена</button>
-</section><aside id="detail"><div id="detailControls"><button id="detailExpand" onclick="toggleDetailFullScreen()" title="Показать схему на весь экран">⛶ На весь экран</button><button onclick="closeDetail()">Закрыть</button></div><div id="content"></div></aside><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
+</section><section id="schemeBuilder" style="display:none;position:fixed;inset:0;z-index:1950;background:#f1f5f9;overflow:auto;padding:12px;box-sizing:border-box"><div style="max-width:1280px;margin:auto;background:white;border-radius:12px;padding:16px;min-height:95vh"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h2>Конструктор схемы муфты</h2><button onclick="closeSchemeBuilder()">Закрыть ✕</button></div><p id="builderTitle"></p><small>Выбери кабели и цвета, добавь делители и соединения. Это визуальная схема; номера сварок не создаются автоматически.</small><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:16px"><div><h3>Делители PLC</h3><div id="builderPlcs"></div><select id="builderRatio" style="padding:8px"><option value="2">1×2</option><option value="4">1×4</option><option value="8">1×8</option><option value="16">1×16</option></select> <button onclick="builderAddPlc()">+ Делитель</button><h3>Соединения волокон</h3><div id="builderLinks"></div><button onclick="builderAddLink()">+ Соединение</button><h3>Примечание</h3><textarea id="builderNotes" rows="3" maxlength="2000" oninput="builderState.notes=this.value" style="width:100%;box-sizing:border-box"></textarea><p id="builderError" style="color:#b91c1c"></p><button id="builderSave" onclick="saveSchemeBuilder()" style="padding:12px;background:#0f766e;color:white;font-weight:700">✓ Сохранить схему</button></div><div><h3>Предпросмотр</h3><div id="builderPreview" style="border:1px solid #cbd5e1;border-radius:10px;padding:8px;overflow-x:auto"></div></div></div></div></section><aside id="detail"><div id="detailControls"><button id="detailExpand" onclick="toggleDetailFullScreen()" title="Показать схему на весь экран">⛶ На весь экран</button><button onclick="closeDetail()">Закрыть</button></div><div id="content"></div></aside><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script>
 const sb=window.supabase.createClient('https://xwnqquregcurkxrbmavy.supabase.co','sb_publishable_YiKgXPhiGP9CuiMBBBo48Q_NU54IRES');
 const map=L.map('map').setView([43.424107,39.954174],16);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);const layer=L.layerGroup().addTo(map);let db=null;
 const e=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -298,9 +298,130 @@ outputs.forEach((out,j)=>{const name=Array.isArray(out)?out[0]:String(out),color
 svg+='</svg>';
 return '<h4>Восстановленная схема муфты</h4><div style="overflow-x:auto;max-width:100%;border:1px solid #cbd5e1;border-radius:10px">'+svg+'</div><p>'+e(d.caption||'')+'</p>'+(notes.length?'<div>'+notes.map(x=>'<div class="row"><small>'+e(x)+'</small></div>').join('')+'</div>':'')+'<p><small>Восстановлено по сохранённой диктовке. Неизвестные цвета и физические порты не назначались. Линии схемы условны.</small></p>';
 }
+
+const builderColors=['синий','оранжевый','зелёный','коричневый','красный','белый','серый','жёлтый','фиолетовый','чёрный','голубой','розовый'];
+let builderState=null,builderClosure=null,builderBaseVersion=0,builderLegacy=false;
+function builderCables(){return db.cables.filter(c=>c.from_closure_id===builderClosure||c.to_closure_id===builderClosure)}
+function builderEndValue(x){if(x.kind==='free')return 'free';if(x.kind==='cable')return 'c:'+x.cable_id+':'+x.color;if(x.kind==='plc')return 'p:'+x.plc_id+':'+x.port;return ''}
+function builderParseEnd(v){if(v==='free')return {kind:'free'};const p=v.split(':');return p[0]==='c'?{kind:'cable',cable_id:p[1],color:p[2]}:{kind:'plc',plc_id:p[1],port:p[2]==='in'?'in':Number(p[2])}}
+function builderOptions(side,current){
+ let h=side==='to'?'<option value="free">○ Свободно / не подключено</option>':'';
+ for(const c of builderCables()){
+  for(const color of builderColors){
+   const v='c:'+c.id+':'+color;
+   h+='<option value="'+e(v)+'"'+(builderEndValue(current)===v?' selected':'')+'>'+e(color)+' · '+e(c.code)+'</option>';
+  }
+ }
+ for(const p of builderState.plcs){
+  const ports=side==='from'?Array.from({length:p.ratio},(_,i)=>i+1):['in'];
+  for(const port of ports){
+   const v='p:'+p.id+':'+port;
+   h+='<option value="'+e(v)+'"'+(builderEndValue(current)===v?' selected':'')+'>'+e(p.name)+' · '+(port==='in'?'ВХОД':'выход '+port)+'</option>';
+  }
+ }
+ return h;
+}
+function openSchemeBuilder(id){
+ const c=db?.closures.find(x=>x.id===id);if(!c)return;
+ builderClosure=id;
+ const latest=(db.schemes||[]).filter(x=>x.closure_id===id).sort((a,b)=>b.version_number-a.version_number)[0];
+ builderBaseVersion=latest?.version_number||0;builderLegacy=!!latest&&!latest.scheme?.builder_v1;
+ builderState=latest?.scheme?.builder_v1?JSON.parse(JSON.stringify(latest.scheme.builder_v1)):{
+  plcs:db.splitters.filter(x=>x.closure_id===id).map(x=>({id:'s_'+x.id,name:x.code+' 1×'+x.ratio,ratio:Number(x.ratio)})),
+  links:[],notes:''
+ };
+ document.getElementById('builderTitle').textContent=c.name+' · '+builderCables().length+' кабелей · версия '+builderBaseVersion;
+ document.getElementById('builderError').textContent=builderLegacy?'Ранее здесь была схема в другом формате. Новая версия конструктора заменит её на экране, но сохранит в истории.':'';
+ document.getElementById('schemeBuilder').style.display='block';document.getElementById('detail').style.display='none';builderRender();
+}
+function closeSchemeBuilder(){document.getElementById('schemeBuilder').style.display='none';builderState=null;builderClosure=null}
+function builderAddPlc(){
+ if(builderState.plcs.length>=32)return alert('Максимум 32 делителя');
+ const ratio=Number(document.getElementById('builderRatio').value);
+ const id='p_'+Math.random().toString(36).slice(2,12);
+ builderState.plcs.push({id,name:'PLC 1×'+ratio+' №'+(builderState.plcs.filter(p=>p.ratio===ratio).length+1),ratio});builderRender();
+}
+function builderRenamePlc(id,val){const p=builderState.plcs.find(x=>x.id===id);if(p){p.name=val.slice(0,80);builderRenderPreview()}}
+function builderDeletePlc(id){
+ if(!confirm('Убрать делитель с рисунка и связанные линии? Реальное оборудование не удаляется.'))return;
+ builderState.plcs=builderState.plcs.filter(p=>p.id!==id);
+ builderState.links=builderState.links.filter(l=>!(l.from.kind==='plc'&&l.from.plc_id===id)&&!(l.to.kind==='plc'&&l.to.plc_id===id));builderRender();
+}
+function builderAddLink(){
+ if(builderState.links.length>=200)return alert('Максимум 200 соединений');
+ const cable=builderCables()[0],plc=builderState.plcs[0];
+ if(!cable&&!plc)return alert('У муфты нет кабелей — сначала добавь PLC');
+ const from=cable?{kind:'cable',cable_id:cable.id,color:'синий'}:{kind:'plc',plc_id:plc.id,port:1};
+ builderState.links.push({from,to:{kind:'free'}});builderRender();
+}
+function builderDeleteLink(i){builderState.links.splice(i,1);builderRender()}
+function builderChangeEnd(i,side,v){builderState.links[i][side]=builderParseEnd(v);builderRenderPreview()}
+function builderDescribe(x,b){
+ if(!x||x.kind==='free')return 'Свободно';
+ if(x.kind==='plc'){const p=b.plcs.find(z=>z.id===x.plc_id);return (p?.name||'PLC')+' · '+(x.port==='in'?'вход':'выход '+x.port)}
+ const cable=db.cables.find(z=>z.id===x.cable_id);return x.color+' · '+(cable?.code||'Кабель');
+}
+function builderDiagram(c,b){
+ const links=b.links||[],h=130+Math.max(links.length,1)*76;
+ let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 '+h+'" role="img" aria-label="Схема соединений" style="display:block;width:100%;min-width:690px;font-family:system-ui,sans-serif"><rect x="2" y="2" width="916" height="'+(h-4)+'" rx="13" fill="#f8fafc" stroke="#cbd5e1"/><text x="460" y="30" text-anchor="middle" font-size="19" font-weight="700">'+e(c?.name||'Муфта')+'</text><text x="16" y="56" font-size="12" fill="#64748b">Делители: '+e((b.plcs||[]).map(p=>p.name).join(' • ').slice(0,120)||'нет')+'</text>';
+ if(!links.length)svg+='<text x="460" y="115" text-anchor="middle" fill="#64748b">Добавь соединение</text>';
+ links.forEach((l,i)=>{
+  const y=95+i*76,a=builderDescribe(l.from,b),z=builderDescribe(l.to,b);
+  const ac=l.from.kind==='cable'?fiberColor(l.from.color):'#2563eb',zc=l.to.kind==='cable'?fiberColor(l.to.color):l.to.kind==='free'?'#94a3b8':'#2563eb';
+  svg+='<rect x="14" y="'+(y-23)+'" width="335" height="46" rx="8" fill="white" stroke="#cbd5e1"/><rect x="14" y="'+(y-23)+'" width="6" height="46" fill="'+ac+'"/><text x="26" y="'+(y+5)+'" font-size="13">'+e(a.length>44?a.slice(0,41)+'…':a)+'</text><line x1="350" x2="566" y1="'+y+'" y2="'+y+'" stroke="'+ac+'" stroke-width="5"'+(l.to.kind==='free'?' stroke-dasharray="9,7"':'')+'/><circle cx="460" cy="'+y+'" r="5" fill="'+zc+'"/><rect x="566" y="'+(y-23)+'" width="339" height="46" rx="8" fill="white" stroke="#cbd5e1"/><rect x="899" y="'+(y-23)+'" width="6" height="46" fill="'+zc+'"/><text x="579" y="'+(y+5)+'" font-size="13">'+e(z.length>43?z.slice(0,40)+'…':z)+'</text>';
+ });
+ svg+='</svg>';
+ return '<div style="overflow-x:auto">'+svg+'</div>'+(b.notes?'<p>'+e(b.notes)+'</p>':'')+'<p><small>Визуальная схема. Физические сварки и номера волокон отдельно не подтверждены.</small></p>';
+}
+function builderRenderPreview(){if(builderState)document.getElementById('builderPreview').innerHTML=builderDiagram(db.closures.find(x=>x.id===builderClosure),builderState)}
+function builderRender(){
+ if(!builderState)return;
+ const plcs=document.getElementById('builderPlcs');plcs.innerHTML='';
+ builderState.plcs.forEach(p=>{
+  const line=document.createElement('div');line.className='row';line.style.display='flex';line.style.gap='6px';
+  const inp=document.createElement('input');inp.value=p.name;inp.maxLength=80;inp.style.flex='1';inp.style.minWidth='0';inp.oninput=()=>builderRenamePlc(p.id,inp.value);
+  const type=document.createElement('small');type.textContent='1×'+p.ratio;
+  const del=document.createElement('button');del.textContent='✕';del.onclick=()=>builderDeletePlc(p.id);
+  line.append(inp,type,del);plcs.append(line);
+ });
+ const links=document.getElementById('builderLinks');links.innerHTML='';
+ builderState.links.forEach((l,i)=>{
+  const card=document.createElement('div');card.className='row';card.style.background='#f8fafc';card.style.border='1px solid #cbd5e1';card.style.borderRadius='8px';card.style.margin='8px 0';card.style.padding='10px';
+  const title=document.createElement('b');title.textContent='Соединение '+(i+1);
+  const del=document.createElement('button');del.textContent='Удалить';del.style.float='right';del.onclick=()=>builderDeleteLink(i);card.append(title,del);
+  for(const side of ['from','to']){
+   const label=document.createElement('label');label.style.display='block';label.textContent=side==='from'?'Откуда':'Куда';
+   const sel=document.createElement('select');sel.style.width='100%';sel.style.padding='8px';sel.innerHTML=builderOptions(side,l[side]);
+   sel.onchange=()=>builderChangeEnd(i,side,sel.value);label.append(sel);card.append(label);
+  }
+  links.append(card);
+ });
+ document.getElementById('builderNotes').value=builderState.notes||'';builderRenderPreview();
+}
+async function saveSchemeBuilder(){
+ if(!builderState||!builderClosure)return;
+ const err=document.getElementById('builderError'),btn=document.getElementById('builderSave');
+ if(!builderState.links.length){err.textContent='Добавь хотя бы одно соединение';return}
+ const ports=new Set();
+ for(const l of builderState.links){
+  if(builderEndValue(l.from)===builderEndValue(l.to)){err.textContent='Нельзя соединять точку с самой собой';return}
+  for(const end of [l.from,l.to])if(end.kind==='plc'){
+   const key=builderEndValue(end);if(ports.has(key)){err.textContent='Один и тот же порт PLC используется более одного раза';return}ports.add(key);
+  }
+ }
+ if(builderLegacy&&!confirm('Предыдущая схема сохранится в истории, новая схема конструктора станет текущей. Продолжить?'))return;
+ btn.disabled=true;err.textContent='Сохраняем…';
+ try{
+  const id=builderClosure;
+  await mapWrite({action:'save_closure_builder',closure_id:id,base_version:builderBaseVersion,builder:builderState});
+  closeSchemeBuilder();await load();const c=db.closures.find(x=>x.id===id);if(c)show(c,'scheme');
+ }catch(ex){err.textContent=ex.message}finally{btn.disabled=false}
+}
+
 function wholeClosureDiagram(c){
 const versions=(db.schemes||[]).filter(x=>x.closure_id===c.id).sort((a,b)=>b.version_number-a.version_number),v=versions[0]?.scheme||{};
 const hist=Array.isArray(v.olt_to_forest)?v.olt_to_forest:[],other=Array.isArray(v.other_connections)?v.other_connections:[];
+if(v.builder_v1)return builderDiagram(c,v.builder_v1);
 if(v.diagram_v1)return restoredDiagram(c,v.diagram_v1);
 const central=c.code==='GARAZHI-CENTRAL', rows=[];
 if(c.code==='SUZ-STO'){
@@ -362,7 +483,7 @@ function toggleDetailFullScreen(){
 function closeDetail(){document.getElementById('detail').style.display='none'}
 document.addEventListener('keydown',event=>{if(event.key==='Escape'){const detail=document.getElementById('detail');if(detail.classList.contains('wide'))toggleDetailFullScreen();else closeDetail()}});
 function show(c,tab='scheme'){selectedClosure=c.id;const cables=db.cables.filter(x=>x.from_closure_id===c.id||x.to_closure_id===c.id);let h='<h3>'+e(c.name)+'</h3><small>'+e(c.code)+'</small><p><button onclick="beginAddSplitter(\''+e(c.id)+'\')">+ Делитель PLC</button></p><div style="display:flex;gap:5px;flex-wrap:wrap;margin:12px 0"><button onclick="switchTab(\'scheme\')">Схема</button><button onclick="switchTab(\'cables\')">Кабели</button><button onclick="switchTab(\'info\')">Информация</button><button onclick="switchTab(\'history\')">История</button></div>';
-if(tab==='scheme')h+=scheme(c);
+if(tab==='scheme'){h+='<p><button style="background:#0f766e;color:white" onclick="openSchemeBuilder(selectedClosure)">✎ Конструктор схемы муфты</button></p>';h+=scheme(c)}
 if(tab==='history')h+=history(c);
 if(tab==='cables'){h+='<h4>Кабели ('+cables.length+')</h4>';cables.forEach(x=>{const other=db.closures.find(z=>z.id===(x.from_closure_id===c.id?x.to_closure_id:x.from_closure_id));h+='<div class="row"><b>'+e(x.code)+'</b> · '+e(x.fiber_count)+'F'+(x.strength_member?' · '+e(x.strength_member):'')+(x.tensile_strength_kn!=null?' · '+e(x.tensile_strength_kn)+' кН':'')+'<p>'+e(x.notes||'')+'</p><button class="route-for-cable" data-cable="'+e(x.id)+'">✎ Проложить трассу</button> '+(Array.isArray(x.route_points)&&x.route_points.length?'<small>Поворотов: '+x.route_points.length+'</small>':'<small>Прямая между муфтами</small>')+(other?'<button data-target="'+e(other.id)+'" class="goto">К муфте: '+e(other.name)+'</button>':'<small>Другая муфта не указана</small>')+'</div>'})}
 if(tab==='info')h+='<p>'+e(c.address||'Адрес не указан')+'</p><p>Координаты: '+e(c.latitude)+', '+e(c.longitude)+'</p><p>'+e(c.notes||'Примечаний нет')+'</p><p><b>Создано:</b> '+e(c.created_at?new Date(c.created_at).toLocaleString('ru-RU'):'дата неизвестна')+'</p><p><b>Автор записи:</b> '+e(c.created_by_email||'Не зафиксирован (создано до включения учёта авторов)')+'</p><button onclick="focusClosure(selectedClosure)">Показать на карте</button>';
