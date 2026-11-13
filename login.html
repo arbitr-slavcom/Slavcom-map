@@ -512,7 +512,7 @@ function patchIsMismatch(a,b){return a&&b&&a!=='unknown'&&b!=='unknown'&&a!==b}
 function patchKnownCrosses(closureId){
  const v=(db.schemes||[]).filter(s=>s.closure_id===closureId).sort((a,b)=>b.version_number-a.version_number)[0];
  const schema=v?.scheme||{},crosses=schema.cabinet_crosses_v1?.crosses||[];
- return {version:v?.version_number||0,schema,crosses:crosses.map((c,i)=>({...c,number:i+1}))};
+ return {version:v?.version_number||0,schema,crosses:crosses.map((c,i)=>({...c,number:c.number||i+1}))};
 }
 function patchCurrentPolish(cross,port){return patchBuilder?.port_polishes.find(p=>p.cross===cross&&p.port===port)?.polish||'unknown'}
 function patchPutPolish(cross,port,polish){
@@ -583,7 +583,7 @@ function cancelPatchBuilder(){const id=patchBuilder?.closureId;patchBuilder=null
 function patchAddCross(){
  if(!patchBuilder)return;
  if(patchBuilder.crosses.length>=16){alert('Максимум 16 кроссов в одном шкафу');return}
- const number=patchBuilder.crosses.length+1;
+ const number=Math.max(0,...patchBuilder.crosses.map(x=>x.number))+1;
  patchBuilder.crosses.push({number,name:'Кросс №'+number,ports:null,notes:'Новый кросс, добавленный через конструктор'});
  patchBuilder.cross_port_counts.push({cross:number,ports:8});
  if(!patchSelection.fromCross||!patchPortCount(patchSelection.fromCross))patchSelection.fromCross=number;
@@ -674,7 +674,7 @@ function cabinetPatchSvg(crosses,patch){
 }
 function cabinetPatchSummary(parts,patch){
  if(!patch)return '';
- const crosses=parts.map((x,i)=>({...x,number:i+1}));
+ const crosses=parts.map((x,i)=>({...x,number:x.number||i+1}));
  let h='<h4>Патч-корды между кроссами ('+patch.cords.length+')</h4>'+cabinetPatchSvg(crosses,patch);
  if(!patch.cords.length)h+='<p><small>Патч-корды пока не добавлены.</small></p>';
  patch.cords.forEach(x=>{
@@ -749,12 +749,16 @@ if(v.cabinet_crosses_v1){
       out+='<div style="overflow-x:auto;max-width:100%;padding-bottom:5px"><div style="display:grid;grid-template-columns:repeat('+k.ports+',minmax(27px,1fr));gap:4px;min-width:'+Math.max(440,k.ports*31)+'px">';
       for(let n=1;n<=k.ports;n++){
         const filled=n<=k.connected_ports;
-        const polish=v.patch_cords_v1?.port_polishes?.find(p=>p.cross===i+1&&p.port===n)?.polish||'unknown';
+        const polish=v.patch_cords_v1?.port_polishes?.find(p=>p.cross===(k.number||i+1)&&p.port===n)?.polish||'unknown';
         const polishing=polish!=='unknown';
-        out+='<div title="Порт '+n+(filled?' · оптическое волокно подключено':' · оптическое волокно свободно')+' · полировка '+patchPolishLabel(polish)+'" style="padding:6px 1px;text-align:center;border:2px solid '+(polishing?patchPolishCss(polish):filled?'#2563eb':'#cbd5e1')+';background:'+(filled?'#dbeafe':'#f8fafc')+';color:'+(filled?'#1d4ed8':'#64748b')+';border-radius:5px;font-size:12px;font-weight:700">'+n+'</div>';
+        const group=(v.cross_connections_v1||[]).find(x=>x.cross_number===(k.number||i+1))?.port_groups?.find(g=>n>=g.first_port&&n<=g.last_port);
+        const groupPaint=group?.first_port===1?'#dbeafe':group?.first_port===17?'#fef3c7':group?.first_port===21?'#dcfce7':null;
+        out+='<div title="Порт '+n+(filled?' · оптическое волокно подключено':' · оптическое волокно свободно')+' · полировка '+patchPolishLabel(polish)+'" style="padding:6px 1px;text-align:center;border:2px solid '+(polishing?patchPolishCss(polish):filled?'#2563eb':'#cbd5e1')+';background:'+(filled?(groupPaint||'#dbeafe'):'#f8fafc')+';color:'+(filled?'#1d4ed8':'#64748b')+';border-radius:5px;font-size:12px;font-weight:700">'+n+'</div>';
       }
       out+='</div></div>';
-      if(v.patch_cords_v1?.port_polishes?.some(p=>p.cross===i+1))out+='<p><small><span style="color:#2563eb">■</span> UPC · <span style="color:#16a34a">■</span> APC — полировка гнезда кросса (цвет рамки порта). Цвет жилы кабеля — отдельный параметр.</small></p>';
+      const portGroups=(v.cross_connections_v1||[]).find(z=>z.cross_number===(k.number||i+1))?.port_groups||[];
+      if(portGroups.length)out+='<div style="display:flex;gap:8px;flex-wrap:wrap;padding:8px 0">'+portGroups.map(g=>'<small style="background:#f1f5f9;padding:5px;border-radius:5px"><b>'+g.first_port+'–'+g.last_port+'</b> · '+e(g.source_name||g.cable_code||'Кабель')+'</small>').join('')+'</div>';
+      if(v.patch_cords_v1?.port_polishes?.some(p=>p.cross===(k.number||i+1)))out+='<p><small><span style="color:#2563eb">■</span> UPC · <span style="color:#16a34a">■</span> APC — полировка гнезда кросса (цвет рамки порта). Цвет жилы кабеля — отдельный параметр.</small></p>';
     }
   }else out+='<p><small>Индивидуальные подключения пока не установлены</small></p>';
   if(k.notes)out+='<p><small>'+e(k.notes)+'</small></p>';
