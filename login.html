@@ -518,12 +518,12 @@ if(v.cabinet_crosses_v1){
     if(k.cable_code)out+='<p><small>Кабель: '+e(k.cable_code)+'</small></p>';
     if(k.source_closure_code)out+='<p><small>Источник: '+e(k.source_closure_code)+'</small></p>';
     if(Number.isInteger(k.connected_ports)&&k.connected_ports>=0){
-      out+='<div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px">';
+      out+='<div style="overflow-x:auto;max-width:100%;padding-bottom:5px"><div style="display:grid;grid-template-columns:repeat('+k.ports+',minmax(27px,1fr));gap:4px;min-width:'+Math.max(440,k.ports*31)+'px">';
       for(let n=1;n<=k.ports;n++){
         const filled=n<=k.connected_ports;
         out+='<div title="Порт '+n+(filled?' · занято':' · свободно')+'" style="padding:6px 1px;text-align:center;border:1px solid '+(filled?'#2563eb':'#cbd5e1')+';background:'+(filled?'#dbeafe':'#f8fafc')+';color:'+(filled?'#1d4ed8':'#64748b')+';border-radius:5px;font-size:12px;font-weight:700">'+n+'</div>';
       }
-      out+='</div>';
+      out+='</div></div>';
     }
   }else out+='<p><small>Индивидуальные подключения пока не установлены</small></p>';
   if(k.notes)out+='<p><small>'+e(k.notes)+'</small></p>';
