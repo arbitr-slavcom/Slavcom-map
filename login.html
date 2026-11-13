@@ -421,6 +421,12 @@ async function saveSchemeBuilder(){
 function wholeClosureDiagram(c){
 const versions=(db.schemes||[]).filter(x=>x.closure_id===c.id).sort((a,b)=>b.version_number-a.version_number),v=versions[0]?.scheme||{};
 const hist=Array.isArray(v.olt_to_forest)?v.olt_to_forest:[],other=Array.isArray(v.other_connections)?v.other_connections:[];
+if(v.cabinet_crosses_v1){
+ const x=v.cabinet_crosses_v1,parts=Array.isArray(x.crosses)?x.crosses:[];
+ let out='<h4>Оптический шкаф · '+e(c.name)+'</h4><div style="border:2px solid #64748b;border-radius:12px;background:#f8fafc;padding:14px;max-width:620px">';
+ parts.forEach((k,i)=>{out+='<div style="padding:14px;margin:9px 0;border:1px solid #94a3b8;border-radius:8px;background:white"><b>▤ '+e(k.name||('Кросс №'+(i+1)))+'</b><p><small>Порты и кабели пока не указаны</small></p></div>'});
+ return out+'</div><p><small>'+e(x.notes||'')+'</small></p>';
+}
 if(v.builder_v1)return builderDiagram(c,v.builder_v1);
 if(v.diagram_v1)return restoredDiagram(c,v.diagram_v1);
 const central=c.code==='GARAZHI-CENTRAL', rows=[];
