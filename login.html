@@ -419,16 +419,18 @@ async function saveSchemeBuilder(){
 }
 
 function fiberColorTransitDiagram(c,v){
- const fibers=Array.isArray(v.fibers)?v.fibers:[],h=118+fibers.length*66;
+ const fibers=Array.isArray(v.fibers)?v.fibers:[],confirmed=!!v.same_color_transits_confirmed,h=118+fibers.length*66;
  let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 '+h+'" role="img" aria-label="Цветовая схема восьми волокон с семью транзитами и отводом на компьютерный клуб" style="display:block;width:100%;height:auto;min-width:860px;font-family:system-ui,sans-serif"><rect x="3" y="3" width="1074" height="'+(h-6)+'" rx="14" stroke="#94a3b8" fill="#f8fafc"/><text x="540" y="29" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">'+e(c.name)+'</text><text x="18" y="57" font-size="14" fill="#334155">Лесная 12 · OCF 8F</text><text x="700" y="57" font-size="14" fill="#334155">Направление из муфты</text>';
  fibers.forEach((f,i)=>{
-  const y=93+i*66,col=fiberColor(f.color),club=f.route==='club';
+  const y=93+i*66,col=fiberColor(f.color),club=f.route==='club',rightColor=club?'#111827':confirmed?col:'#94a3b8';
+  const label=club?'Клуб · кабель 1 ОВ (чёрный отвод)':confirmed?'Транзит · '+f.color+' → '+f.color+' · гаражи напротив полиции':'Транзит · цвет не уточнён';
   svg+='<rect x="15" y="'+(y-21)+'" rx="7" width="250" height="42" fill="#fff" stroke="#cbd5e1"/><circle cx="35" cy="'+y+'" r="8" fill="'+col+'" stroke="#475569"/><text x="55" y="'+(y+5)+'" font-size="14" fill="#0f172a">'+e(f.color)+'</text>';
-  svg+='<line x1="265" y1="'+y+'" x2="405" y2="'+y+'" stroke="'+col+'" stroke-width="6"/><circle cx="417" cy="'+y+'" r="11" fill="white" stroke="#ea580c" stroke-width="3"/><line x1="428" y1="'+y+'" x2="665" y2="'+y+'" stroke="'+(club?'#111827':'#94a3b8')+'" stroke-width="5"'+(club?'':' stroke-dasharray="8 6"')+'/>';
-  svg+='<rect x="665" y="'+(y-21)+'" rx="7" width="398" height="42" fill="#fff" stroke="#cbd5e1"/><text x="676" y="'+(y+5)+'" font-size="14" fill="#0f172a">'+(club?'Клуб · кабель 1 ОВ (чёрный отвод)':'Транзит к гаражам напротив полиции · цвет не уточнён')+'</text>';
+  svg+='<line x1="265" y1="'+y+'" x2="405" y2="'+y+'" stroke="'+col+'" stroke-width="6"/><circle cx="417" cy="'+y+'" r="11" fill="white" stroke="#ea580c" stroke-width="3"/><line x1="428" y1="'+y+'" x2="665" y2="'+y+'" stroke="'+rightColor+'" stroke-width="5"'+(club||confirmed?'':' stroke-dasharray="8 6"')+'/>';
+  svg+='<rect x="665" y="'+(y-21)+'" rx="7" width="398" height="42" fill="#fff" stroke="#cbd5e1"/><text x="676" y="'+(y+5)+'" font-size="14" fill="#0f172a">'+e(label)+'</text>';
  });
  svg+='</svg>';
- return '<h4>Цветная схема · '+e(v.model||'8 ОВ')+'</h4><div style="overflow-x:auto;border:1px solid #cbd5e1;border-radius:10px">'+svg+'</div><p><b>Внимание:</b> расцветка семи транзитных волокон <b>предварительная, по ГОСТ</b>. Паспорт конкретного OCF не найден. Серые пунктирные линии справа не означают серые волокна — это неизвестные соответствия. Номера физических сварок не подтверждены.</p><p><small>'+e(v.note||'')+'</small></p>';
+ const note=confirmed?'<b>Подтверждено:</b> семь волокон проварены цвет в цвет между двумя одинаковыми кабелями OCF. Чёрное отведено на компьютерный клуб. Нумерация 1–8 предварительная, физические номера сварок пока не записаны.':'<b>Внимание:</b> расцветка предварительная по ГОСТ. Соответствия волокон не подтверждены.';
+ return '<h4>Цветная схема · '+e(v.model||'8 ОВ')+'</h4><div style="overflow-x:auto;border:1px solid #cbd5e1;border-radius:10px">'+svg+'</div><p>'+note+'</p><p><small>'+e(v.note||'')+'</small></p>';
 }
 function wholeClosureDiagram(c){
 const versions=(db.schemes||[]).filter(x=>x.closure_id===c.id).sort((a,b)=>b.version_number-a.version_number),v=versions[0]?.scheme||{};
