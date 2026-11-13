@@ -569,10 +569,10 @@ function openPatchBuilder(closureId){
    port_polishes:JSON.parse(JSON.stringify(p.schema.patch_cords_v1?.port_polishes||[])),
    cords:JSON.parse(JSON.stringify(p.schema.patch_cords_v1?.cords||[]))
  };
- patchSelection={fromCross:p.crosses[0].number,fromPort:1,toCross:p.crosses[Math.min(1,p.crosses.length-1)].number,toPort:1,
+ patchSelection={fromCross:p.crosses[0]?.number||0,fromPort:1,toCross:p.crosses[Math.min(1,p.crosses.length-1)]?.number||0,toPort:1,
    fromAdapter:'unknown',toAdapter:'unknown',fromPlug:'UPC',toPlug:'UPC',label:''};
- if(!patchPortCount(patchSelection.fromCross))patchSelection.fromCross=p.crosses.find(x=>patchPortCount(x.number)>0)?.number||p.crosses[0].number;
- if(!patchPortCount(patchSelection.toCross))patchSelection.toCross=p.crosses.find(x=>patchPortCount(x.number)>0)?.number||p.crosses[0].number;
+ if(!patchPortCount(patchSelection.fromCross))patchSelection.fromCross=p.crosses.find(x=>patchPortCount(x.number)>0)?.number||p.crosses[0]?.number||0;
+ if(!patchPortCount(patchSelection.toCross))patchSelection.toCross=p.crosses.find(x=>patchPortCount(x.number)>0)?.number||p.crosses[0]?.number||0;
  patchSideSync('from');patchSideSync('to');patchPickNext='from';
  document.getElementById('detail').style.display='block';
  document.getElementById('detail').classList.add('wide');
