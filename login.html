@@ -503,6 +503,224 @@ function fiberColorTransitDiagram(c,v){
  const note=confirmed?'<b>Подтверждено:</b> семь волокон проварены цвет в цвет между двумя одинаковыми кабелями OCF. Чёрное отведено на компьютерный клуб. Нумерация 1–8 предварительная, физические номера сварок пока не записаны.':'<b>Внимание:</b> расцветка предварительная по ГОСТ. Соответствия волокон не подтверждены.';
  return '<h4>Цветная схема · '+e(v.model||'8 ОВ')+'</h4><div style="overflow-x:auto;border:1px solid #cbd5e1;border-radius:10px">'+svg+'</div><p>'+note+'</p><p><small>'+e(v.note||'')+'</small></p>';
 }
+
+let patchBuilder=null,patchPickNext='from',patchSelection=null;
+const patchPolishes=['unknown','UPC','APC'];
+function patchPolishLabel(p){return p==='UPC'?'UPC · синий':p==='APC'?'APC · зелёный':'Неизвестно'}
+function patchPolishCss(p){return p==='UPC'?'#2563eb':p==='APC'?'#16a34a':'#94a3b8'}
+function patchIsMismatch(a,b){return a&&b&&a!=='unknown'&&b!=='unknown'&&a!==b}
+function patchKnownCrosses(closureId){
+ const v=(db.schemes||[]).filter(s=>s.closure_id===closureId).sort((a,b)=>b.version_number-a.version_number)[0];
+ const schema=v?.scheme||{},crosses=schema.cabinet_crosses_v1?.crosses||[];
+ return {version:v?.version_number||0,schema,crosses:crosses.map((c,i)=>({...c,number:i+1}))};
+}
+function patchCurrentPolish(cross,port){return patchBuilder?.port_polishes.find(p=>p.cross===cross&&p.port===port)?.polish||'unknown'}
+function patchPutPolish(cross,port,polish){
+ if(!patchBuilder||!cross||!port)return;
+ patchBuilder.port_polishes=patchBuilder.port_polishes.filter(p=>p.cross!==cross||p.port!==port);
+ if(polish!=='unknown')patchBuilder.port_polishes.push({cross,port,polish});
+}
+function patchPortCount(cross){
+ return patchBuilder?.cross_port_counts.find(p=>p.cross===cross)?.ports||patchBuilder?.crosses.find(x=>x.number===cross)?.ports||0;
+}
+function patchUsed(cross,port){
+ return patchBuilder?.cords.find(c=>c.from.cross===cross&&c.from.port===port||c.to.cross===cross&&c.to.port===port);
+}
+function patchSideSync(side){
+ const cross=Number(patchSelection[side+'Cross']),port=Number(patchSelection[side+'Port']);
+ patchSelection[side+'Adapter']=patchCurrentPolish(cross,port);
+}
+function setPatchField(field,value){
+ if(!patchBuilder)return;
+ if(field.endsWith('Cross')){
+  patchSelection[field]=Number(value);
+  patchSelection[field.replace('Cross','Port')]=1;
+  patchSideSync(field.slice(0,-5));
+ }else if(field.endsWith('Port')){
+  patchSelection[field]=Number(value);
+  patchSideSync(field.slice(0,-4));
+ }else patchSelection[field]=value;
+ renderPatchBuilder();
+}
+function patchPick(cross,port){
+ if(!patchBuilder)return;
+ const side=patchPickNext;
+ patchSelection[side+'Cross']=cross;patchSelection[side+'Port']=port;patchSideSync(side);
+ patchPickNext=side==='from'?'to':'from';
+ renderPatchBuilder();
+ document.getElementById('patchEditorTop')?.scrollIntoView({block:'nearest'});
+}
+function patchSelectField(side,kind){
+ const key=side+kind,label=kind==='Cross'?'Кросс':'Порт',value=patchSelection[key];
+ const choices=kind==='Cross'?patchBuilder.crosses.map(c=>[c.number,'Кросс №'+c.number]):Array.from({length:patchPortCount(Number(patchSelection[side+'Cross']))},(_,i)=>[i+1,'Порт '+(i+1)]);
+ return '<label style="display:block;flex:1;min-width:120px">'+label+'<select style="display:block;width:100%;padding:7px" onchange="setPatchField(\''+key+'\',this.value)">'+choices.map(([v,t])=>'<option value="'+v+'"'+(Number(value)===Number(v)?' selected':'')+'>'+e(t)+'</option>').join('')+'</select></label>';
+}
+function patchPolishSelect(side,field,label){
+ const key=side+field,val=patchSelection[key];
+ return '<label style="display:block;flex:1;min-width:135px">'+label+'<select style="display:block;width:100%;padding:7px" onchange="setPatchField(\''+key+'\',this.value)">'+patchPolishes.map(p=>'<option value="'+p+'"'+(p===val?' selected':'')+'>'+patchPolishLabel(p)+'</option>').join('')+'</select></label>';
+}
+function openPatchBuilder(closureId){
+ const c=db.closures.find(x=>x.id===closureId);
+ if(!c||c.closure_type!=='cabinet')return;
+ const p=patchKnownCrosses(closureId);
+ if(!p.crosses.length){alert('Сначала нужно указать кроссы шкафа в схеме');return}
+ patchBuilder={
+   closureId,version:p.version,crosses:p.crosses,
+   cross_port_counts:p.crosses.filter(x=>Number.isInteger(x.ports)&&x.ports>0).map(x=>({cross:x.number,ports:x.ports})),
+   port_polishes:JSON.parse(JSON.stringify(p.schema.patch_cords_v1?.port_polishes||[])),
+   cords:JSON.parse(JSON.stringify(p.schema.patch_cords_v1?.cords||[]))
+ };
+ patchSelection={fromCross:p.crosses[0].number,fromPort:1,toCross:p.crosses[Math.min(1,p.crosses.length-1)].number,toPort:1,
+   fromAdapter:'unknown',toAdapter:'unknown',fromPlug:'UPC',toPlug:'UPC',label:''};
+ if(!patchPortCount(patchSelection.fromCross))patchSelection.fromCross=p.crosses.find(x=>patchPortCount(x.number)>0)?.number||p.crosses[0].number;
+ if(!patchPortCount(patchSelection.toCross))patchSelection.toCross=p.crosses.find(x=>patchPortCount(x.number)>0)?.number||p.crosses[0].number;
+ patchSideSync('from');patchSideSync('to');patchPickNext='from';
+ document.getElementById('detail').style.display='block';
+ document.getElementById('detail').classList.add('wide');
+ document.getElementById('detailExpand').textContent='▣ Свернуть окно';
+ renderPatchBuilder();
+}
+function cancelPatchBuilder(){const id=patchBuilder?.closureId;patchBuilder=null;patchSelection=null;const c=db?.closures.find(x=>x.id===id);if(c)show(c,'scheme')}
+function patchSetCount(cross,count){
+ if(!patchBuilder)return;
+ const n=Number(count),def=patchBuilder.crosses.find(x=>x.number===cross);
+ if(!Number.isInteger(n)||n<0||n>96){alert('Укажи от 0 до 96 портов');return}
+ if(n===0&&patchBuilder.cords.some(x=>x.from.cross===cross||x.to.cross===cross)){alert('Нельзя убрать кросс с подключёнными патч-кордами');return}
+ if(n<(def?.connected_ports||0)){alert('У кросса уже заведено больше волокон, чем указано портов');return}
+ if(patchBuilder.cords.some(x=>x.from.cross===cross&&x.from.port>n||x.to.cross===cross&&x.to.port>n)){alert('На удаляемых портах есть патч-корды');return}
+ patchBuilder.cross_port_counts=patchBuilder.cross_port_counts.filter(x=>x.cross!==cross);
+ if(n)patchBuilder.cross_port_counts.push({cross,ports:n});
+ patchBuilder.port_polishes=patchBuilder.port_polishes.filter(x=>x.cross!==cross||x.port<=n);
+ for(const side of ['from','to'])if(patchSelection[side+'Cross']===cross&&patchSelection[side+'Port']>n)patchSelection[side+'Port']=1;
+ patchSideSync('from');patchSideSync('to');renderPatchBuilder();
+}
+function patchSavePortPolishes(){
+ if(!patchBuilder)return;
+ for(const side of ['from','to']){
+   const cross=Number(patchSelection[side+'Cross']),port=Number(patchSelection[side+'Port']);
+   if(!patchPortCount(cross)||port<1||port>patchPortCount(cross)){alert('Сначала задай ёмкость обоих кроссов');return}
+   patchPutPolish(cross,port,patchSelection[side+'Adapter']);
+ }
+ renderPatchBuilder();
+ document.getElementById('patchMessage').textContent='Полировки портов внесены в конструктор. Нажми «Сохранить схему», чтобы записать их в базу.';
+}
+function patchAddCord(){
+ if(!patchBuilder)return;
+ const a={cross:Number(patchSelection.fromCross),port:Number(patchSelection.fromPort),polish:patchSelection.fromPlug};
+ const b={cross:Number(patchSelection.toCross),port:Number(patchSelection.toPort),polish:patchSelection.toPlug};
+ if(!patchPortCount(a.cross)||!patchPortCount(b.cross)||a.port>patchPortCount(a.cross)||b.port>patchPortCount(b.cross)){alert('Сначала укажи количество портов на обоих кроссах');return}
+ if(a.cross===b.cross&&a.port===b.port){alert('Нельзя соединить порт сам с собой');return}
+ if(patchUsed(a.cross,a.port)||patchUsed(b.cross,b.port)){alert('Один из портов уже занят патч-кордом. Сначала удали прежнее соединение.');return}
+ patchPutPolish(a.cross,a.port,patchSelection.fromAdapter);
+ patchPutPolish(b.cross,b.port,patchSelection.toAdapter);
+ const mismatch=patchIsMismatch(patchSelection.fromAdapter,a.polish)||patchIsMismatch(patchSelection.toAdapter,b.polish);
+ if(mismatch&&!confirm('Внимание: на одном из концов полировка кросса не совпадает с полировкой патч-корда. Сохранить это соединение с предупреждением?'))return;
+ patchBuilder.cords.push({id:crypto.randomUUID(),from:a,to:b,label:String(patchSelection.label||'').trim()});
+ patchSelection.label='';patchPickNext='from';
+ renderPatchBuilder();
+}
+function patchRemoveCord(id){if(!patchBuilder||!confirm('Удалить патч-корд из схемы? Изменения сохранятся после нажатия «Сохранить схему».'))return;patchBuilder.cords=patchBuilder.cords.filter(x=>x.id!==id);renderPatchBuilder()}
+async function savePatchBuilder(){
+ if(!patchBuilder)return;
+ const btn=document.getElementById('patchSaveBtn'),msg=document.getElementById('patchMessage');
+ btn.disabled=true;msg.textContent='';
+ try{
+  const id=patchBuilder.closureId;
+  await mapWrite({action:'save_cabinet_patches',closure_id:id,base_version:patchBuilder.version,patch:{
+    cross_port_counts:patchBuilder.cross_port_counts,port_polishes:patchBuilder.port_polishes,cords:patchBuilder.cords
+  }});
+  patchBuilder=null;patchSelection=null;await load();
+  const c=db.closures.find(x=>x.id===id);if(c)show(c,'scheme');
+  document.getElementById('status').textContent='Кроссы и патч-корды сохранены';
+ }catch(err){msg.textContent=err.message;btn.disabled=false}
+}
+function cabinetPatchSvg(crosses,patch){
+ if(!patch||!Array.isArray(patch.cords)||!patch.cords.length)return '';
+ const entries=crosses.filter(x=>Number.isInteger(x.ports)&&x.ports>0);
+ const pos=new Map(entries.map((c,i)=>[c.number,i]));
+ const h=90+entries.length*105,off=130,step=27;
+ let svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 '+h+'" style="min-width:730px;width:100%;height:auto;font-family:system-ui" role="img" aria-label="Соединения кроссов патч-кордами">';
+ entries.forEach((c,i)=>{
+  const y=55+i*105;
+  svg+='<text x="12" y="'+(y+6)+'" font-size="14" font-weight="700" fill="#334155">Кросс №'+c.number+'</text>';
+  for(let n=1;n<=c.ports;n++){
+   const x=off+(n-1)*Math.min(step,820/Math.max(1,c.ports));
+   const polish=patch.port_polishes?.find(p=>p.cross===c.number&&p.port===n)?.polish||'unknown';
+   svg+='<rect x="'+(x-10)+'" y="'+(y-11)+'" width="21" height="22" rx="4" fill="'+patchPolishCss(polish)+'" opacity=".92"/><text x="'+x+'" y="'+(y+4)+'" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">'+n+'</text>';
+  }
+ });
+ patch.cords.forEach((cord,i)=>{
+  const from=entries.find(x=>x.number===cord.from.cross),to=entries.find(x=>x.number===cord.to.cross);
+  if(!from||!to)return;
+  const calc=(c,port)=>off+(port-1)*Math.min(step,820/Math.max(1,c.ports));
+  const x1=calc(from,cord.from.port),x2=calc(to,cord.to.port),y1=55+pos.get(from.number)*105,y2=55+pos.get(to.number)*105;
+  const polishA=patch.port_polishes?.find(p=>p.cross===cord.from.cross&&p.port===cord.from.port)?.polish||'unknown';
+  const polishB=patch.port_polishes?.find(p=>p.cross===cord.to.cross&&p.port===cord.to.port)?.polish||'unknown';
+  const bad=patchIsMismatch(polishA,cord.from.polish)||patchIsMismatch(polishB,cord.to.polish);
+  let mid=y1<y2?y1+35:y1-35;
+  if(y1===y2)mid=y1+35+i*7;
+  svg+='<path d="M'+x1+' '+(y1+12)+' Q'+x1+' '+mid+' '+((x1+x2)/2)+' '+mid+' T'+x2+' '+(y2+12)+'" stroke="'+(bad?'#dc2626':'#7c3aed')+'" stroke-width="3" fill="none"'+(bad?' stroke-dasharray="5 3"':'')+'/>';
+ });
+ return '<div style="overflow-x:auto;background:#faf5ff;border:1px solid #ddd6fe;border-radius:9px;margin:10px 0">'+svg+'</svg></div>';
+}
+function cabinetPatchSummary(parts,patch){
+ if(!patch)return '';
+ const crosses=parts.map((x,i)=>({...x,number:i+1}));
+ let h='<h4>Патч-корды между кроссами ('+patch.cords.length+')</h4>'+cabinetPatchSvg(crosses,patch);
+ if(!patch.cords.length)h+='<p><small>Патч-корды пока не добавлены.</small></p>';
+ patch.cords.forEach(x=>{
+  const a=patch.port_polishes?.find(p=>p.cross===x.from.cross&&p.port===x.from.port)?.polish||'unknown';
+  const b=patch.port_polishes?.find(p=>p.cross===x.to.cross&&p.port===x.to.port)?.polish||'unknown';
+  const bad=patchIsMismatch(a,x.from.polish)||patchIsMismatch(b,x.to.polish);
+  h+='<div class="row"><b>Кросс №'+x.from.cross+' / порт '+x.from.port+' → Кросс №'+x.to.cross+' / порт '+x.to.port+'</b> '+(bad?'<span style="color:#b91c1c">⚠ Несовместимая полировка</span>':'')+'<p><small>Кросс '+patchPolishLabel(a)+' → патч '+patchPolishLabel(x.from.polish)+' | патч '+patchPolishLabel(x.to.polish)+' → кросс '+patchPolishLabel(b)+'</small></p>'+(x.label?'<small>'+e(x.label)+'</small>':'')+'</div>';
+ });
+ return h;
+}
+function renderPatchBuilder(){
+ if(!patchBuilder)return;
+ const state=patchBuilder,c=db.closures.find(x=>x.id===state.closureId);
+ const b=document.getElementById('content'),usable=state.crosses.filter(x=>patchPortCount(x.number)>0);
+ let h='<div id="patchEditorTop"><h3>🔌 Конструктор кроссов и патч-кордов</h3><p><b>'+e(c?.name||'Шкаф')+'</b><br><small>UPC — синий, APC — зелёный. Полировки гнезда кросса и патч-корда задаются отдельно.</small></p><button onclick="cancelPatchBuilder()">← К схеме шкафа</button></div>';
+ h+='<h4>1. Кроссы шкафа</h4><p><small>Нажми на порт в схеме ниже: первый выбор — начало патч-корда, второй — конец. Цвет рамки показывает полировку порта.</small></p>';
+ state.crosses.forEach(x=>{
+  const count=patchPortCount(x.number);
+  const canChange=!Number.isInteger(x.ports)||x.ports<=0;
+  h+='<div class="row" style="overflow-x:auto"><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><b>Кросс №'+x.number+'</b><small>'+count+' портов</small>';
+  if(canChange)h+='<label>Количество портов <select onchange="patchSetCount('+x.number+',Number(this.value))"><option value="0">Не указано</option>'+[4,8,12,16,24,32,48,64,96].map(n=>'<option value="'+n+'"'+(count===n?' selected':'')+'>'+n+'</option>').join('')+'</select></label>';
+  h+='</div>';
+  if(count>0){
+   h+='<div style="display:flex;gap:3px;flex-wrap:nowrap;overflow-x:auto;padding:10px 1px">';
+   for(let port=1;port<=count;port++){
+    const used=patchUsed(x.number,port),polish=patchCurrentPolish(x.number,port),chosen=(patchSelection.fromCross===x.number&&patchSelection.fromPort===port||patchSelection.toCross===x.number&&patchSelection.toPort===port);
+    h+='<button title="Кросс №'+x.number+', порт '+port+', полировка '+patchPolishLabel(polish)+(used?', патч-корд установлен':'')+'" onclick="patchPick('+x.number+','+port+')" style="flex:0 0 31px;min-width:31px;padding:8px 1px;border:2px solid '+(chosen?'#f59e0b':patchPolishCss(polish))+';background:'+(used?'#ede9fe':'white')+';font-weight:'+(used?'800':'400')+'">'+port+'</button>';
+   }
+   h+='</div>';
+  }else h+='<small>Количество портов пока неизвестно — выбери его, чтобы начать расключение.</small>';
+  h+='</div>';
+ });
+ h+='<p><small>🔵 UPC &nbsp; 🟢 APC &nbsp; ⚪ неизвестно; сиреневая заливка — порт с патч-кордом; жёлтая рамка — выбранный порт.</small></p>';
+ h+='<h4>2. Выбрать порты и полировки</h4>';
+ for(const [side,label] of [['from','Начало патч-корда'],['to','Конец патч-корда']]){
+  h+='<div style="border:1px solid #cbd5e1;border-radius:9px;padding:11px;margin:7px 0"><b>'+label+'</b><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:8px">';
+  h+=patchSelectField(side,'Cross')+patchSelectField(side,'Port')+'</div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:8px">';
+  h+=patchPolishSelect(side,'Adapter','Полировка порта кросса')+patchPolishSelect(side,'Plug','Полировка конца патч-корда')+'</div></div>';
+ }
+ const mismatch=patchIsMismatch(patchSelection.fromAdapter,patchSelection.fromPlug)||patchIsMismatch(patchSelection.toAdapter,patchSelection.toPlug);
+ if(mismatch)h+='<p style="color:#b91c1c;font-weight:700">⚠ Несовпадение UPC/APC на одном из подключений. Возможны повышенные потери и повреждение торцов.</p>';
+ h+='<label style="display:block">Подпись патч-корда (необязательно) <input maxlength="100" style="display:block;width:100%;box-sizing:border-box" value="'+e(patchSelection.label||'')+'" oninput="patchSelection.label=this.value"></label>';
+ h+='<p><button onclick="patchSavePortPolishes()">✓ Применить полировки портов</button> <button style="background:#7c3aed;color:white" onclick="patchAddCord()">+ Добавить патч-корд</button></p>';
+ h+='<h4>3. Соединения ('+state.cords.length+')</h4>';
+ const parts=state.crosses.map(x=>({...x,ports:patchPortCount(x.number)}));
+ h+=cabinetPatchSvg(parts,state);
+ state.cords.forEach(x=>{
+  const a=patchCurrentPolish(x.from.cross,x.from.port),z=patchCurrentPolish(x.to.cross,x.to.port);
+  const bad=patchIsMismatch(a,x.from.polish)||patchIsMismatch(z,x.to.polish);
+  h+='<div class="row"><b>Кросс '+x.from.cross+' / '+x.from.port+' → кросс '+x.to.cross+' / '+x.to.port+'</b>'+(bad?' <strong style="color:#b91c1c">⚠ Полировка!</strong>':'')+'<p><small>'+patchPolishLabel(a)+' ↔ '+patchPolishLabel(x.from.polish)+' | '+patchPolishLabel(x.to.polish)+' ↔ '+patchPolishLabel(z)+'</small></p>'+(x.label?'<p>'+e(x.label)+'</p>':'')+'<button onclick="patchRemoveCord(\''+e(x.id)+'\')">Удалить патч-корд</button></div>';
+ });
+ h+='<p id="patchMessage" style="color:#b91c1c;min-height:18px"></p><button id="patchSaveBtn" style="background:#0f766e;color:white;font-weight:700" onclick="savePatchBuilder()">💾 Сохранить схему</button> <button onclick="cancelPatchBuilder()">Отмена</button><p><small>Изменения на карте появляются после сохранения. Прежние версии схемы остаются в истории.</small></p>';
+ b.innerHTML=h;
+ document.getElementById('detail').style.display='block';
+}
 function wholeClosureDiagram(c){
 const versions=(db.schemes||[]).filter(x=>x.closure_id===c.id).sort((a,b)=>b.version_number-a.version_number),v=versions[0]?.scheme||{};
 const hist=Array.isArray(v.olt_to_forest)?v.olt_to_forest:[],other=Array.isArray(v.other_connections)?v.other_connections:[];
@@ -539,6 +757,7 @@ if(v.cabinet_crosses_v1){
    }
    out+='</div><p><small>'+e(k.notes||'')+'</small></p><p><small>'+e(k.port_numbering_note||'')+'</small></p></div>';
  }
+ out+=cabinetPatchSummary(parts,v.patch_cords_v1||null);
  return out;
 }
 if(v.fiber_color_scheme_v1)return fiberColorTransitDiagram(c,v.fiber_color_scheme_v1);
@@ -604,7 +823,7 @@ function toggleDetailFullScreen(){
 function closeDetail(){document.getElementById('detail').style.display='none'}
 document.addEventListener('keydown',event=>{if(event.key==='Escape'){const detail=document.getElementById('detail');if(detail.classList.contains('wide'))toggleDetailFullScreen();else closeDetail()}});
 function show(c,tab='scheme'){selectedClosure=c.id;const cables=db.cables.filter(x=>x.from_closure_id===c.id||x.to_closure_id===c.id);let h='<h3>'+e(c.name)+'</h3><small>'+e(c.code)+'</small><p><button onclick="beginAddSplitter(\''+e(c.id)+'\')">+ Делитель PLC</button></p><div style="display:flex;gap:5px;flex-wrap:wrap;margin:12px 0"><button onclick="switchTab(\'scheme\')">Схема</button><button onclick="switchTab(\'cables\')">Кабели</button><button onclick="switchTab(\'info\')">Информация</button><button onclick="switchTab(\'history\')">История</button></div>';
-if(tab==='scheme'){h+='<p><button style="background:#0f766e;color:white" onclick="openSchemeBuilder(selectedClosure)">✎ Конструктор схемы муфты</button></p>';h+=scheme(c)}
+if(tab==='scheme'){if(c.closure_type==='cabinet'){h+='<p><button style="background:#7c3aed;color:white" onclick="openPatchBuilder(selectedClosure)">🔌 Конструктор кроссов и патч-кордов</button></p>'}else{h+='<p><button style="background:#0f766e;color:white" onclick="openSchemeBuilder(selectedClosure)">✎ Конструктор схемы муфты</button></p>'}h+=scheme(c)}
 if(tab==='history')h+=history(c);
 if(tab==='cables'){h+='<h4>Кабели ('+cables.length+')</h4>';cables.forEach(x=>{const other=db.closures.find(z=>z.id===(x.from_closure_id===c.id?x.to_closure_id:x.from_closure_id));h+='<div class="row"><b>'+e(cableDisplayName(x))+'</b> <small>('+e(x.code)+')</small> · '+e(cableTypeLabel(x))+' · '+e(x.fiber_count)+' ОВ'+(x.strength_member?' · '+e(x.strength_member):'')+(x.tensile_strength_kn!=null?' · '+e(x.tensile_strength_kn)+' кН':'')+'<p>'+e(x.notes||'')+'</p><button class="edit-cable-record" data-cable="'+e(x.id)+'">✎ Изменить свойства</button> <button class="route-for-cable" data-cable="'+e(x.id)+'">⌁ Проложить трассу</button> '+(Array.isArray(x.route_points)&&x.route_points.length?'<small>Поворотов: '+x.route_points.length+'</small>':'<small>Прямая между муфтами</small>')+(other?'<button data-target="'+e(other.id)+'" class="goto">К муфте: '+e(other.name)+'</button>':'<small>Другая муфта не указана</small>')+'</div>'})}
 if(tab==='info')h+='<p>'+e(c.address||'Адрес не указан')+'</p><p>Координаты: '+e(c.latitude)+', '+e(c.longitude)+'</p><p>'+e(c.notes||'Примечаний нет')+'</p><p><b>Создано:</b> '+e(c.created_at?new Date(c.created_at).toLocaleString('ru-RU'):'дата неизвестна')+'</p><p><b>Автор записи:</b> '+e(c.created_by_email||'Не зафиксирован (создано до включения учёта авторов)')+'</p><button onclick="focusClosure(selectedClosure)">Показать на карте</button>';
