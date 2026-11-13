@@ -509,7 +509,26 @@ const hist=Array.isArray(v.olt_to_forest)?v.olt_to_forest:[],other=Array.isArray
 if(v.cabinet_crosses_v1){
  const x=v.cabinet_crosses_v1,parts=Array.isArray(x.crosses)?x.crosses:[];
  let out='<h4>Оптический шкаф · '+e(c.name)+'</h4><div style="border:2px solid #64748b;border-radius:12px;background:#f8fafc;padding:14px;max-width:620px">';
- parts.forEach((k,i)=>{out+='<div style="padding:14px;margin:9px 0;border:1px solid #94a3b8;border-radius:8px;background:white"><b>▤ '+e(k.name||('Кросс №'+(i+1)))+'</b><p><small>Индивидуальные подключения пока не установлены</small></p></div>'});
+ parts.forEach((k,i)=>{
+  out+='<div style="padding:14px;margin:9px 0;border:1px solid #94a3b8;border-radius:8px;background:white"><b>▤ '+e(k.name||('Кросс №'+(i+1)))+'</b>';
+  if(Number.isInteger(k.ports)&&k.ports>0){
+    out+='<p><b>'+k.ports+' портов</b>';
+    if(Number.isInteger(k.connected_ports))out+=' · занято '+k.connected_ports+' · свободно '+(Number.isInteger(k.free_ports)?k.free_ports:(k.ports-k.connected_ports));
+    out+='</p>';
+    if(k.cable_code)out+='<p><small>Кабель: '+e(k.cable_code)+'</small></p>';
+    if(k.source_closure_code)out+='<p><small>Источник: '+e(k.source_closure_code)+'</small></p>';
+    if(Number.isInteger(k.connected_ports)&&k.connected_ports>=0){
+      out+='<div style="display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:5px">';
+      for(let n=1;n<=k.ports;n++){
+        const filled=n<=k.connected_ports;
+        out+='<div title="Порт '+n+(filled?' · занято':' · свободно')+'" style="padding:6px 1px;text-align:center;border:1px solid '+(filled?'#2563eb':'#cbd5e1')+';background:'+(filled?'#dbeafe':'#f8fafc')+';color:'+(filled?'#1d4ed8':'#64748b')+';border-radius:5px;font-size:12px;font-weight:700">'+n+'</div>';
+      }
+      out+='</div>';
+    }
+  }else out+='<p><small>Индивидуальные подключения пока не установлены</small></p>';
+  if(k.notes)out+='<p><small>'+e(k.notes)+'</small></p>';
+  out+='</div>';
+});
  out+='</div><p><small>'+e(x.notes||'')+'</small></p>';
  if(v.incoming_cross_v1){
    const k=v.incoming_cross_v1,colors=Array.isArray(k.port_colors)?k.port_colors:[];
