@@ -563,7 +563,6 @@ function openPatchBuilder(closureId){
  const c=db.closures.find(x=>x.id===closureId);
  if(!c||c.closure_type!=='cabinet')return;
  const p=patchKnownCrosses(closureId);
- if(!p.crosses.length){alert('Сначала нужно указать кроссы шкафа в схеме');return}
  patchBuilder={
    closureId,version:p.version,crosses:p.crosses,
    cross_port_counts:p.crosses.filter(x=>Number.isInteger(x.ports)&&x.ports>0).map(x=>({cross:x.number,ports:x.ports})),
@@ -581,6 +580,16 @@ function openPatchBuilder(closureId){
  renderPatchBuilder();
 }
 function cancelPatchBuilder(){const id=patchBuilder?.closureId;patchBuilder=null;patchSelection=null;const c=db?.closures.find(x=>x.id===id);if(c)show(c,'scheme')}
+function patchAddCross(){
+ if(!patchBuilder)return;
+ if(patchBuilder.crosses.length>=16){alert('Максимум 16 кроссов в одном шкафу');return}
+ const number=patchBuilder.crosses.length+1;
+ patchBuilder.crosses.push({number,name:'Кросс №'+number,ports:null,notes:'Новый кросс, добавленный через конструктор'});
+ patchBuilder.cross_port_counts.push({cross:number,ports:8});
+ if(!patchSelection.fromCross||!patchPortCount(patchSelection.fromCross))patchSelection.fromCross=number;
+ if(!patchSelection.toCross||!patchPortCount(patchSelection.toCross))patchSelection.toCross=number;
+ patchSideSync('from');patchSideSync('to');renderPatchBuilder();
+}
 function patchSetCount(cross,count){
  if(!patchBuilder)return;
  const n=Number(count),def=patchBuilder.crosses.find(x=>x.number===cross);
@@ -627,7 +636,7 @@ async function savePatchBuilder(){
  try{
   const id=patchBuilder.closureId;
   await mapWrite({action:'save_cabinet_patches',closure_id:id,base_version:patchBuilder.version,patch:{
-    cross_port_counts:patchBuilder.cross_port_counts,port_polishes:patchBuilder.port_polishes,cords:patchBuilder.cords
+    cross_count:patchBuilder.crosses.length,cross_port_counts:patchBuilder.cross_port_counts,port_polishes:patchBuilder.port_polishes,cords:patchBuilder.cords
   }});
   patchBuilder=null;patchSelection=null;await load();
   const c=db.closures.find(x=>x.id===id);if(c)show(c,'scheme');
@@ -681,7 +690,7 @@ function renderPatchBuilder(){
  const state=patchBuilder,c=db.closures.find(x=>x.id===state.closureId);
  const b=document.getElementById('content'),usable=state.crosses.filter(x=>patchPortCount(x.number)>0);
  let h='<div id="patchEditorTop"><h3>🔌 Конструктор кроссов и патч-кордов</h3><p><b>'+e(c?.name||'Шкаф')+'</b><br><small>UPC — синий, APC — зелёный. Полировки гнезда кросса и патч-корда задаются отдельно.</small></p><button onclick="cancelPatchBuilder()">← К схеме шкафа</button></div>';
- h+='<h4>1. Кроссы шкафа</h4><p><small>Нажми на порт в схеме ниже: первый выбор — начало патч-корда, второй — конец. Цвет рамки показывает полировку порта.</small></p>';
+ h+='<h4>1. Кроссы шкафа</h4><p><button onclick="patchAddCross()">+ Добавить кросс</button></p><p><small>Нажми на порт в схеме ниже: первый выбор — начало патч-корда, второй — конец. Цвет рамки показывает полировку порта.</small></p>';
  state.crosses.forEach(x=>{
   const count=patchPortCount(x.number);
   const canChange=!Number.isInteger(x.ports)||x.ports<=0;
@@ -699,6 +708,7 @@ function renderPatchBuilder(){
   h+='</div>';
  });
  h+='<p><small>🔵 UPC &nbsp; 🟢 APC &nbsp; ⚪ неизвестно; сиреневая заливка — порт с патч-кордом; жёлтая рамка — выбранный порт.</small></p>';
+ if(state.crosses.length===0){h+='<p>В шкафу ещё нет кроссов. Нажми «+ Добавить кросс» и выбери количество портов.</p><p><button onclick="cancelPatchBuilder()">Назад</button></p>';b.innerHTML=h;return;}
  h+='<h4>2. Выбрать порты и полировки</h4>';
  for(const [side,label] of [['from','Начало патч-корда'],['to','Конец патч-корда']]){
   h+='<div style="border:1px solid #cbd5e1;border-radius:9px;padding:11px;margin:7px 0"><b>'+label+'</b><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:8px">';
