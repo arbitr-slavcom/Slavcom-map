@@ -739,9 +739,12 @@ if(v.cabinet_crosses_v1){
       out+='<div style="overflow-x:auto;max-width:100%;padding-bottom:5px"><div style="display:grid;grid-template-columns:repeat('+k.ports+',minmax(27px,1fr));gap:4px;min-width:'+Math.max(440,k.ports*31)+'px">';
       for(let n=1;n<=k.ports;n++){
         const filled=n<=k.connected_ports;
-        out+='<div title="Порт '+n+(filled?' · занято':' · свободно')+'" style="padding:6px 1px;text-align:center;border:1px solid '+(filled?'#2563eb':'#cbd5e1')+';background:'+(filled?'#dbeafe':'#f8fafc')+';color:'+(filled?'#1d4ed8':'#64748b')+';border-radius:5px;font-size:12px;font-weight:700">'+n+'</div>';
+        const polish=v.patch_cords_v1?.port_polishes?.find(p=>p.cross===i+1&&p.port===n)?.polish||'unknown';
+        const polishing=polish!=='unknown';
+        out+='<div title="Порт '+n+(filled?' · оптическое волокно подключено':' · оптическое волокно свободно')+' · полировка '+patchPolishLabel(polish)+'" style="padding:6px 1px;text-align:center;border:2px solid '+(polishing?patchPolishCss(polish):filled?'#2563eb':'#cbd5e1')+';background:'+(filled?'#dbeafe':'#f8fafc')+';color:'+(filled?'#1d4ed8':'#64748b')+';border-radius:5px;font-size:12px;font-weight:700">'+n+'</div>';
       }
       out+='</div></div>';
+      if(v.patch_cords_v1?.port_polishes?.some(p=>p.cross===i+1))out+='<p><small><span style="color:#2563eb">■</span> UPC · <span style="color:#16a34a">■</span> APC — полировка гнезда кросса (цвет рамки порта). Цвет жилы кабеля — отдельный параметр.</small></p>';
     }
   }else out+='<p><small>Индивидуальные подключения пока не установлены</small></p>';
   if(k.notes)out+='<p><small>'+e(k.notes)+'</small></p>';
