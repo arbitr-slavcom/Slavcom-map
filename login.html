@@ -108,6 +108,7 @@ async function savePole(){
 }
 function beginRouteSelect(){
  if(!db)return;stopMapModes();routeSelecting=true;
+ draw();
  document.getElementById('detail').style.display='none';
  document.getElementById('editRouteBtn').textContent='Отмена выбора';
  document.getElementById('editRouteBtn').onclick=cancelRouteEdit;
@@ -138,6 +139,7 @@ function editCableRoute(id){
 }
 function cancelRouteEdit(){
  routeSelecting=false;routeEditing=null;routePoints=[];
+ if(db)draw();
  if(routePreview){map.removeLayer(routePreview);routePreview=null}
  if(routeVertices){map.removeLayer(routeVertices);routeVertices=null}
  document.getElementById('routeEditor').style.display='none';
@@ -874,6 +876,10 @@ function draw(){
   const coords=[[a.latitude,a.longitude],...(Array.isArray(c.route_points)?c.route_points.filter(p=>Array.isArray(p)&&p.length===2):[]),[b.latitude,b.longitude]];
   if(coords.length===2&&a.latitude===b.latitude&&a.longitude===b.longitude)return;
   const cableLine=L.polyline(coords,cableLineStyle(c)).addTo(layer);
+  if(routeSelecting){
+   L.polyline(coords,{color:'#2563eb',weight:32,opacity:0.015,interactive:true,bubblingMouseEvents:false}).addTo(layer)
+    .on('click',event=>{L.DomEvent.stopPropagation(event);editCableRoute(c.id)});
+  }
   cableLine.bindTooltip(e(cableDisplayName(c))+' · '+e(cableTypeLabel(c))+' · '+c.fiber_count+' ОВ'+(c.tensile_strength_kn?' · '+c.tensile_strength_kn+' кН':''));
   cableLine.on('click',event=>{
    L.DomEvent.stopPropagation(event);
