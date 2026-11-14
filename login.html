@@ -27,11 +27,11 @@
 <p id="routeCount"></p><p id="routeError" style="color:#b91c1c"></p>
 <div style="display:flex;gap:6px;flex-wrap:wrap"><button onclick="undoRoutePoint()">↶ Убрать точку</button><button onclick="clearRoutePoints()">Прямая линия</button><button id="routeSave" onclick="saveCableRoute()" style="background:#0369a1;color:white">Сохранить трассу</button><button onclick="cancelRouteEdit()">Отмена</button></div>
 </section>
-<section id="login"><b>Доступ к карте сети</b><p>Вход по почте и паролю. Письмо с кодом или ссылкой — резервный вариант. Просмотр доступен только разрешённым пользователям.</p><input type="email" id="email" placeholder="Электронная почта"><input type="password" id="password" autocomplete="current-password" placeholder="Пароль"><button onclick="passwordLogin()">Войти по паролю</button><p><small>Если пароль ещё не задан, его нужно установить в Supabase. Вход по письму оставлен как резервный вариант.</small></p><button onclick="sendCode()">Получить письмо для входа</button><input id="code" placeholder="Код из письма"><button onclick="verifyCode()">Войти</button><p id="message"></p></section><section id="createClosure" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(390px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:white;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box"><h3>Новая муфта</h3><p><small>Точка на карте выбрана. Проверь координаты и заполни название.</small></p><label>Название <input id="newClosureName" maxlength="120" placeholder="Например: Муфта возле дома №5" style="display:block;width:100%;box-sizing:border-box"></label><label>Адрес <input id="newClosureAddress" maxlength="250" placeholder="Улица, ориентир (необязательно)" style="display:block;width:100%;box-sizing:border-box"></label><label>Примечание <textarea id="newClosureNotes" maxlength="2000" rows="3" style="display:block;width:100%;box-sizing:border-box" placeholder="Что известно о муфте (необязательно)"></textarea></label><p id="newClosureCoords"></p><p id="newClosureError" style="color:#b91c1c"></p><button id="newClosureSave" onclick="saveNewClosure()" style="background:#0f766e;color:white">Подтвердить и сохранить</button> <button onclick="cancelAddClosure()">Отмена</button></section><section id="createCable" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(400px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:#fff;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box">
+<section id="login"><b>Доступ к карте сети</b><p>Вход по почте и паролю. Письмо с кодом или ссылкой — резервный вариант. Просмотр доступен только разрешённым пользователям.</p><input type="email" id="email" placeholder="Электронная почта"><input type="password" id="password" autocomplete="current-password" placeholder="Пароль"><button onclick="passwordLogin()">Войти по паролю</button><p><small>Если пароль ещё не задан, его нужно установить в Supabase. Вход по письму оставлен как резервный вариант.</small></p><button onclick="sendCode()">Получить письмо для входа</button><input id="code" placeholder="Код из письма"><button onclick="verifyCode()">Войти</button><p id="message"></p></section><section id="createClosure" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(390px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:white;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box"><h3>Новая муфта</h3><p><small>Точка на карте выбрана. Проверь координаты и заполни название.</small></p><label>Название <input id="newClosureName" maxlength="120" placeholder="Например: Муфта возле дома №5" style="display:block;width:100%;box-sizing:border-box"></label><label>Адрес <input id="newClosureAddress" maxlength="250" placeholder="Улица, ориентир (необязательно)" style="display:block;width:100%;box-sizing:border-box"></label><label>Примечание <textarea id="newClosureNotes" maxlength="2000" rows="3" style="display:block;width:100%;box-sizing:border-box" placeholder="Что известно о муфте (необязательно)"></textarea></label><p id="newClosureCoords"></p><p id="newClosureError" style="color:#b91c1c"></p><button id="newClosureSave" onclick="saveNewClosure()" style="background:#0f766e;color:white">Подтвердить и сохранить</button> <button onclick="cancelAddClosure()">Отмена</button></section><div id="cablePickHint" style="display:none;position:fixed;z-index:1250;top:64px;left:10px;right:10px;max-width:480px;background:#fff;padding:10px 12px;border:2px solid #2563eb;border-radius:10px;box-shadow:0 3px 14px #0003"><span id="cablePickText">Нажми на первую муфту на карте</span> <button onclick="cancelAddCable()" style="float:right;padding:5px 8px">Отмена</button></div><section id="createCable" style="display:none;position:absolute;z-index:1300;top:64px;right:10px;width:min(400px,94vw);max-height:calc(100dvh - 80px);overflow:auto;background:#fff;padding:16px;border-radius:10px;box-shadow:0 3px 20px #0004;box-sizing:border-box">
 <h3>Новая кабельная линия</h3><p><small>Укажи две муфты из списка или выбери их последовательно на карте. После сохранения появится прямая линия между муфтами; фактическая трасса пока не задана.</small></p>
 <label>От муфты<select id="cableFrom" onchange="updateCablePreview()" style="display:block;width:100%;padding:8px;margin:4px 0 10px"></select></label>
 <label>До муфты<select id="cableTo" onchange="updateCablePreview()" style="display:block;width:100%;padding:8px;margin:4px 0 10px"></select></label>
-<button onclick="document.getElementById('createCable').style.display='none';document.getElementById('status').textContent='Выбери две муфты на карте';">Выбрать на карте</button>
+<button onclick="pickCableOnMap()">Выбрать муфты на карте</button>
 <p id="cablePreviewText"><small>Выбери начало и конец линии.</small></p>
 <label>Название кабеля <input id="cableDisplayName" maxlength="160" placeholder="Необязательно" style="display:block;width:100%;box-sizing:border-box"></label>
 <label>Тип кабеля <select id="cableType" style="display:block;width:100%;padding:8px"><option value="magistral">Магистральный</option><option value="subscriber">Абонентский</option></select></label>
@@ -243,7 +243,9 @@ function beginAddCable(){
  document.getElementById('createSplitter').style.display='none';
  for(const id of ['cableFrom','cableTo'])document.getElementById(id).innerHTML=cableOptions();
  document.getElementById('cableError').textContent='';
- document.getElementById('createCable').style.display='block';
+ document.getElementById('createCable').style.display='none';
+ document.getElementById('cablePickHint').style.display='block';
+ document.getElementById('cablePickText').textContent='Нажми на первую муфту на карте';
  document.getElementById('addCableBtn').textContent='Отмена';
  document.getElementById('addCableBtn').onclick=cancelAddCable;
  document.getElementById('status').textContent='Режим добавления кабеля';
@@ -252,17 +254,26 @@ function beginAddCable(){
 function cancelAddCable(){
  addingCable=false;
  document.getElementById('createCable').style.display='none';
+ document.getElementById('cablePickHint').style.display='none';
  if(cablePreviewLine){map.removeLayer(cablePreviewLine);cablePreviewLine=null}
  document.getElementById('addCableBtn').textContent='+ Кабель';
  document.getElementById('addCableBtn').onclick=beginAddCable;
  document.getElementById('status').textContent='Карта сети'
+}
+function pickCableOnMap(){
+ if(!addingCable)return;
+ document.getElementById('createCable').style.display='none';
+ document.getElementById('detail').style.display='none';
+ document.getElementById('cablePickHint').style.display='block';
+ document.getElementById('cablePickText').textContent=document.getElementById('cableFrom').value?'Нажми на вторую муфту на карте':'Нажми на первую муфту на карте';
 }
 function selectCableClosure(c){
  if(!addingCable)return false;
  const from=document.getElementById('cableFrom'),to=document.getElementById('cableTo');
  if(!from.value||to.value){from.value=c.id;to.value=''}else if(c.id!==from.value)to.value=c.id;
  updateCablePreview();
- if(from.value&&to.value)document.getElementById('createCable').style.display='block';
+ if(from.value&&to.value){document.getElementById('cablePickHint').style.display='none';document.getElementById('createCable').style.display='block';}
+ else{document.getElementById('cablePickText').textContent='Начало: '+c.name+'. Нажми на вторую муфту';}
  return true
 }
 function updateCablePreview(){
